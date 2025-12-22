@@ -1,0 +1,12 @@
+{
+  "name": "macaveserveur",
+  "private": true,
+  "scripts": {
+    "buildcss": "tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --minify",
+    "buildcss:watch": "cross-env NODE_ENV=development tailwindcss -i ./Styles/app.css -o ./wwwroot/css/app.css --watch"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.7",
+    "cross-env": "^7.0.3"
+  }
+}

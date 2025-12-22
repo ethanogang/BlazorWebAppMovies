@@ -1,0 +1,65 @@
+@page "/orders"
+@using MaCaveServeur.Services
+@inject OrderService OrderSvc
+
+<h1>🧾 Commandes — Pénuries détectées</h1>
+
+<div class="card">
+  <p>Liste des références <b>sous le seuil</b> par établissement et fournisseur.</p>
+</div>
+
+@if (_rows == null)
+{
+  <div class="card">Chargement…</div>
+}
+else if (_rows.Count == 0)
+{
+  <div class="card">Aucune pénurie pour le moment ✅</div>
+}
+else
+{
+  <div class="card">
+    <table class="pure-table pure-table-striped" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Fournisseur</th>
+          <th>Site</th>
+          <th>Producteur</th>
+          <th>Nom</th>
+          <th>Millésime</th>
+          <th>Qté</th>
+          <th>Seuil</th>
+          <th>Prix achat</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var r in _rows.OrderBy(x => x.Supplier).ThenBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
+        {
+          <tr>
+            <td>@r.Supplier</td>
+            <td>@r.Site</td>
+            <td>@r.Producer</td>
+            <td>@r.Name</td>
+            <td>@(r.Vintage==0?"—":r.Vintage)</td>
+            <td>@r.CurrentQty</td>
+            <td>@r.LowStockThreshold</td>
+            <td>@r.PurchasePrice.ToString("0.00") €</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <NavLink class="btn primary" href="/orders/bulk">Préparer les bons groupés</NavLink>
+  </div>
+}
+
+@code {
+  private List<OrderService.ShortageLine>? _rows;
+
+  protected override void OnInitialized()
+  {
+    _rows = OrderSvc.GetShortages();
+  }
+}

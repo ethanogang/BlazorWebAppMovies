@@ -1,0 +1,92 @@
+@page "/orders/detail/{supplier}"
+@using MaCaveServeur.Services
+@inject OrderService Orders
+
+<h1>🧾 Commande : @(_supplier ?? "—")</h1>
+
+@if (_order == null)
+{
+  <div class="card">Chargement…</div>
+}
+else if (_order.Lines.Count == 0)
+{
+  <div class="card">Aucune ligne à commander pour ce fournisseur.</div>
+}
+else
+{
+  <div class="card">
+    <div><b>Fournisseur :</b> @_order.SupplierName</div>
+    <div><b>Contact :</b> @_order.ContactName</div>
+    <div><b>Email commande :</b> @_order.OrderEmail</div>
+    <div><b>Téléphone :</b> @_order.Phone</div>
+  </div>
+
+  <div class="card">
+    <table class="pure-table pure-table-striped" style="width:100%;">
+      <thead>
+        <tr>
+          <th>Site</th>
+          <th>Producteur</th>
+          <th>Nom</th>
+          <th>Millésime</th>
+          <th>Qté</th>
+          <th>Prix achat</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var l in _order.Lines.OrderBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
+        {
+          <tr>
+            <td>@l.Site</td>
+            <td>@l.Producer</td>
+            <td>@l.Name</td>
+            <td>@(l.Vintage==0?"—":l.Vintage)</td>
+            <td>@l.Quantity</td>
+            <td>@l.PurchasePrice.ToString("0.00") €</td>
+            <td>@( (l.PurchasePrice * l.Quantity).ToString("0.00") ) €</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <button class="btn" @onclick="DownloadExcel">Exporter en Excel</button>
+  </div>
+}
+
+@code {
+  [Parameter] public string? supplier { get; set; }
+
+  private string? _supplier;
+  private OrderService.Order? _order;
+
+  protected override void OnParametersSet()
+  {
+    _supplier = supplier;
+    if (string.IsNullOrWhiteSpace(_supplier))
+    {
+      _order = new OrderService.Order { SupplierName = "" };
+      return;
+    }
+
+    // Reconstruire l'ordre pour ce fournisseur
+    var shortages = Orders.GetShortages()
+      .Where(s => string.Equals(s.Supplier, _supplier, StringComparison.OrdinalIgnoreCase))
+      .ToList();
+
+    _order = Orders.BuildOrderFromShortages(shortages);
+  }
+
+  [Inject] IJSRuntime JS { get; set; } = default!;
+
+  private async Task DownloadExcel()
+  {
+    if (string.IsNullOrWhiteSpace(_supplier)) return;
+    var bytes = Orders.BuildSupplierWorkbook(_supplier);
+    var base64 = Convert.ToBase64String(bytes);
+    var fileName = $"Commande_{_supplier}_{DateTime.Now:yyyyMMdd}.xlsx";
+    await JS.InvokeVoidAsync("saveFile", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", base64);
+  }
+}

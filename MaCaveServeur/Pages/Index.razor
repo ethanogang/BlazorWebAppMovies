@@ -1,0 +1,82 @@
+﻿@page "/"
+@inject MaCaveServeur.Services.CellarService CellarSvc
+@inject MaCaveServeur.Services.AppState State
+@inject NavigationManager Nav
+
+<div class="page-title">Accueil — @(State.IsAll ? "Groupe Amour" : State.CurrentSiteName)</div>
+<div class="page-sub">
+    Vue synthétique @(State.IsAll ? "tous établissements confondus" : $"pour {State.CurrentSiteName}").
+</div>
+
+@code {
+    List<MaCaveServeur.Models.Bottle> list = new();
+    int totalRefs, totalQty, lowStock, distinctSuppliers;
+    Dictionary<string,int> byColor = new();
+
+    protected override void OnInitialized()
+    {
+        var all = CellarSvc.GetAll() ?? new List<MaCaveServeur.Models.Bottle>();
+        list = State.IsAll
+            ? all
+            : all.Where(b => string.Equals(b.Location, State.CurrentSiteCode, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        totalRefs = list.Count;
+        totalQty = list.Sum(b => b.Quantity);
+        lowStock = list.Count(b => b.Quantity <= b.LowStockThreshold);
+        distinctSuppliers = list.Select(b => b.Supplier).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).Count();
+
+        byColor = list
+            .GroupBy(b => (b.Color ?? "INCONNU").ToUpperInvariant())
+            .OrderByDescending(g => g.Count())
+            .ToDictionary(g => g.Key, g => g.Count());
+    }
+}
+
+<div class="metrics mt-18">
+    <div class="metric"><div class="k">@totalRefs</div><div class="l">Références</div></div>
+    <div class="metric"><div class="k">@totalQty</div><div class="l">Bouteilles en stock</div></div>
+    <div class="metric"><div class="k">@lowStock</div><div class="l">Sous seuil</div></div>
+    <div class="metric"><div class="k">@distinctSuppliers</div><div class="l">Fournisseurs actifs</div></div>
+</div>
+
+<div class="row mt-18">
+    <div class="col">
+        <div class="card">
+            <div class="card__head">
+                <div class="card__title">Répartition par couleur</div>
+                <div class="pills">
+                    <span class="pill active">Aujourd’hui</span>
+                    <span class="pill">Global</span>
+                </div>
+            </div>
+            <div class="card__body">
+                @if (byColor.Count == 0)
+                {
+                    <div class="chart" style="display:flex;align-items:center;justify-content:center;color:var(--muted)">Aucune donnée</div>
+                }
+                else
+                {
+                    <table class="table">
+                        <thead><tr><th>Couleur</th><th>Références</th></tr></thead>
+                        <tbody>
+                        @foreach (var kv in byColor)
+                        { <tr><td>@kv.Key</td><td>@kv.Value</td></tr> }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card">
+            <div class="card__head"><div class="card__title">Actions rapides</div></div>
+            <div class="card__body">
+                <div class="row">
+                    <a class="btn btn-primary" @onclick="@(() => Nav.NavigateTo("/cellar/new"))">Ajouter une bouteille</a>
+                    <a class="btn" @onclick="@(() => Nav.NavigateTo("/orders"))">Voir les commandes</a>
+                    <a class="btn" @onclick="@(() => Nav.NavigateTo("/import"))">Import Excel (cave)</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

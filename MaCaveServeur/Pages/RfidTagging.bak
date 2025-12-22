@@ -1,0 +1,94 @@
+@page "/rfid/tagging"
+@using MaCaveServeur.Models
+@inject MaCaveServeur.Services.CellarService Cellar
+
+<h1>📶 Tagging RFID</h1>
+
+<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <label>
+    Bouteille :
+    <select @bind="selectedIdStr" class="border rounded px-2 py-1">
+      <option value="">-- choisir --</option>
+      @foreach (var b in Cellar.Bottles.OrderBy(x => x.Location).ThenBy(x => x.Producer).ThenBy(x => x.Name))
+      {
+        <option value="@b.Id">@b.Location — @b.Producer — @b.Name (@b.Vintage)</option>
+      }
+    </select>
+  </label>
+
+  <input placeholder="Scanner / saisir EPC et Entrée"
+         @bind="scannedTag"
+         @onkeydown="OnKey"
+         class="border rounded px-2 py-1"
+         style="min-width:340px" />
+
+  @if (!string.IsNullOrWhiteSpace(msg))
+  {
+    <span>@msg</span>
+  }
+</div>
+
+@if (Selected is not null)
+{
+  <div class="card">
+    <h3 style="margin-top:0">Étiquettes liées</h3>
+    @if (Selected.RfidTags is null || Selected.RfidTags.Count == 0)
+    {
+      <p>Aucune étiquette RFID pour cette bouteille.</p>
+    }
+    else
+    {
+      <ul>
+        @foreach (var t in Selected.RfidTags)
+        {
+          <li>@t</li>
+        }
+      </ul>
+    }
+  </div>
+}
+
+@code {
+  string? selectedIdStr;
+  string scannedTag = "";
+  string msg = "";
+
+  Bottle? Selected =>
+      Guid.TryParse(selectedIdStr, out var id)
+        ? Cellar.Get(id)
+        : null;
+
+  void OnKey(KeyboardEventArgs e)
+  {
+    if (e.Key == "Enter")
+    {
+      TryAssign();
+    }
+  }
+
+  void TryAssign()
+  {
+    msg = "";
+
+    if (!Guid.TryParse(selectedIdStr, out var id))
+    {
+      msg = "❌ Choisis une bouteille d’abord.";
+      return;
+    }
+
+    var tag = (scannedTag ?? "").Trim();
+    if (string.IsNullOrWhiteSpace(tag))
+    {
+      msg = "❌ Tag vide.";
+      return;
+    }
+
+    // ✅ on APPELLE simplement la méthode (elle retourne void)
+    Cellar.AssignTag(id, tag);
+
+    // nettoie le champ et rafraîchit l’affichage
+    scannedTag = "";
+    msg = $"✅ Tag « {tag} » ajouté.";
+    StateHasChanged();
+  }
+}

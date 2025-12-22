@@ -1,0 +1,55 @@
+@page "/suppliers/import"
+@inject MaCaveServeur.Services.SupplierService SupplierSvc
+
+<h3>Importer des fournisseurs (Excel)</h3>
+
+<div class="card">
+  <div class="card-body">
+    <p>
+      Le fichier doit contenir un onglet avec des en-têtes (insensible à la casse) :
+      <code>Nom/Fournisseur/Supplier</code>,
+      <code>Contact/Commercial</code>,
+      <code>Email</code>,
+      <code>Phone/Téléphone</code>,
+      <code>Notes</code>.
+    </p>
+
+    <InputFile OnChange="OnFile" accept=".xlsx" />
+    @if (!string.IsNullOrEmpty(msg))
+    {
+      <div class="mt-3 alert @alertClass">@msg</div>
+    }
+  </div>
+</div>
+
+@code {
+  string msg = "";
+  string alertClass = "alert-info";
+
+  async Task OnFile(InputFileChangeEventArgs e)
+  {
+    var file = e.File;
+    if (file is null)
+    {
+      msg = "Aucun fichier.";
+      alertClass = "alert-warning";
+      return;
+    }
+
+    try
+    {
+      using var ms = new MemoryStream();
+      await file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024).CopyToAsync(ms);
+      ms.Position = 0;
+
+      var (inserted, updated) = await SupplierSvc.ImportExcelAsync(ms);
+      msg = $"Import terminé : {inserted} ajout(s), {updated} mise(s) à jour.";
+      alertClass = "alert-success";
+    }
+    catch (Exception ex)
+    {
+      msg = $"Erreur import : {ex.Message}";
+      alertClass = "alert-danger";
+    }
+  }
+}

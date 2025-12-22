@@ -1,0 +1,50 @@
+﻿@page "/"
+@namespace MaCaveServeur.Pages
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    Layout = null;
+}
+<!DOCTYPE html>
+<html lang="fr" class="sl-theme-light">
+<link href="css/app.css" rel="stylesheet" />
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <base href="~/" />
+
+    <title>Groupe Amour – Gestion de cave</title>
+    <meta name="description" content="Gestion de cave multi-établissements (Groupe Amour) – Blazor Server" />
+
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss%403.0.0/build/base-min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss%403.0.0/build/pure-min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/purecss%403.0.0/build/grids-responsive-min.css" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/%40shoelace-style/shoelace%402.12.0/cdn/themes/light.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/%40shoelace-style/shoelace%402.12.0/cdn/themes/dark.css" />
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vanillajs-datepicker%401.3.4/dist/css/datepicker.min.css" />
+
+    <link rel="stylesheet" href="css/app.css" asp-append-version="true" />
+</head>
+<body>
+    <component type="typeof(App)" render-mode="ServerPrerendered" />
+
+    <script src="https://www.gstatic.com/charts/loader.js"></script>
+    <script src="js/dashboard.js" asp-append-version="true"></script>
+
+    <script src="js/theme.js" asp-append-version="true"></script>
+
+    <script type="module" src="https://cdn.jsdelivr.net/npm/%40shoelace-style/shoelace%402.12.0/cdn/shoelace.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/vanillajs-datepicker%401.3.4/dist/js/datepicker.min.js"></script>
+
+    <script src="_framework/blazor.server.js"></script>
+
+    <script src="~/js/site.js"></script>
+
+</body>
+</html>

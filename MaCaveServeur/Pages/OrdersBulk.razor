@@ -1,0 +1,71 @@
+@page "/orders/bulk"
+@using MaCaveServeur.Services
+@inject OrderService OrderSvc
+@inject IJSRuntime JS
+
+<h1>🧾 Commandes groupées par fournisseur</h1>
+
+<div class="card">
+  <p>Génère un classeur Excel par fournisseur (à partir des pénuries) ou un ZIP contenant tous les fournisseurs.</p>
+</div>
+
+@if (_rows == null)
+{
+  <div class="card">Analyse des pénuries…</div>
+}
+else if (_rows.Count == 0)
+{
+  <div class="card">Aucune pénurie détectée ✅</div>
+}
+else
+{
+  <div class="card">
+    <button class="btn primary" @onclick="DownloadAllZip">Télécharger tout (ZIP)</button>
+  </div>
+
+  <div class="card">
+    <h3>Par fournisseur</h3>
+    @foreach (var g in _rows.GroupBy(r => r.Supplier).OrderBy(g => g.Key))
+    {
+      <div style="display:flex; align-items:center; justify-content:space-between; border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; background:var(--panel);">
+        <div>
+          <div style="font-weight:600;">@g.Key</div>
+          <div style="color:var(--muted); font-size:.9rem">@g.Count() ligne(s)</div>
+        </div>
+        <div>
+          <button class="btn" @onclick="() => DownloadOneSupplier(g.Key)">Télécharger Excel</button>
+        </div>
+      </div>
+    }
+  </div>
+}
+
+@code {
+  private List<OrderService.ShortageLine>? _rows;
+
+  protected override void OnInitialized()
+  {
+    _rows = OrderSvc.GetShortages();
+  }
+
+  // <-- Méthode async AVEC await => plus de CS1998
+  private async Task DownloadAllZip()
+  {
+    var bytes = OrderSvc.BuildAllSuppliersZip();
+    var b64 = Convert.ToBase64String(bytes);
+    var file = $"Commandes_Groupées_{DateTime.Now:yyyyMMdd_HHmm}.zip";
+    await JS.InvokeVoidAsync("saveFile", file, "application/zip", b64);
+  }
+
+  // <-- Méthode async AVEC await
+  private async Task DownloadOneSupplier(string supplier)
+  {
+    var bytes = OrderSvc.BuildSupplierWorkbook(supplier);
+    var b64 = Convert.ToBase64String(bytes);
+    var file = $"Commande_{Sanitize(supplier)}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
+    await JS.InvokeVoidAsync("saveFile", file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+  }
+
+  private static string Sanitize(string v) =>
+      string.Concat((v ?? "").Where(ch => char.IsLetterOrDigit(ch) || ch=='-' || ch=='_' || ch==' ')).Trim();
+}

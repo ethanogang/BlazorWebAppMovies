@@ -1,0 +1,109 @@
+is_global = true
+build_property.TargetFramework = net9.0
+build_property.TargetFramework = net9.0
+build_property.TargetPlatformMinVersion = 
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = MaCaveServeur
+build_property.RootNamespace = MaCaveServeur
+build_property.ProjectDir = C:\BlazorWebAppMovies\MaCaveServeur\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = C:\BlazorWebAppMovies\MaCaveServeur
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/App.razor]
+build_metadata.AdditionalFiles.TargetPath = QXBwLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Cellar.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/CellarEdit.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyRWRpdC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/CellarNew.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyTmV3LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Dashboard.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRGFzaGJvYXJkLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Import.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW1wb3J0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/OrderDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JkZXJEZXRhaWwucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Orders.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JkZXJzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/OrdersBulk.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JkZXJzQnVsay5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Suppliers.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3VwcGxpZXJzLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/SuppliersImport.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3VwcGxpZXJzSW1wb3J0LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/ToolsClear.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVG9vbHNDbGVhci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Transfer.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcVHJhbnNmZXIucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Shared/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE5hdk1lbnUucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = X0ltcG9ydHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Shared/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = U2hhcmVkXE1haW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = b-ycmu8wg2z5
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Error.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcRXJyb3IuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/_Host.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0hvc3QuY3NodG1s
+build_metadata.AdditionalFiles.CssScope = 
+
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/_Layout.cshtml]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcX0xheW91dC5jc2h0bWw=
+build_metadata.AdditionalFiles.CssScope = 

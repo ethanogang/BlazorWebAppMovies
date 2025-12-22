@@ -1,0 +1,19 @@
+using System.Collections.Generic;
+using MaCaveServeur.Models;
+
+namespace MaCaveServeur.Services
+{
+    public class InventoryResult
+    {
+        public List<InventoryHit> Present { get; set; } = new();
+        public List<InventoryHit> Missing { get; set; } = new();
+        public List<string> Unknown { get; set; } = new();
+    }
+
+    // Important: partial pour matcher l’autre déclaration (alias Epc) dans CellarService.cs
+    public partial class InventoryHit
+    {
+        public string EPC { get; set; } = "";
+        public Bottle? Bottle { get; set; }
+    }
+}

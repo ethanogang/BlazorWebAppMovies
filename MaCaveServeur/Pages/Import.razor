@@ -1,0 +1,65 @@
+@page "/import"
+@using Microsoft.AspNetCore.Components.Forms
+@inject MaCaveServeur.Services.CellarService CellarSvc
+
+<h1 class="text-2xl font-semibold mb-4">📥 Importer (Excel .xlsx)</h1>
+
+<div class="flex items-center gap-4 mb-4">
+    <label class="font-medium">Établissement :</label>
+    <select class="border rounded px-2 py-1" @bind="SelectedSite">
+        @foreach (var s in AllSites)
+        {
+            <option value="@s">@s</option>
+        }
+    </select>
+</div>
+
+<div class="rounded border p-4 bg-white/40 dark:bg-white/5 max-w-3xl">
+    <p class="mb-2">
+        Feuille attendue avec en-têtes (ligne 1) :
+        <code>COULEUR</code>, <code>NOM</code>, <code>APPELLATION</code> (ou <code>APPELATION</code>), 
+        <code>PRODUCTEUR</code>, <code>PAYS</code>, <code>REGION</code>, <code>FOURNISSEUR</code>, 
+        <code>MILLESIME</code>, <code>CEPAGES</code>, <code>PRIX ACHAT</code>, 
+        <code>PRIX VENTE</code>, <code>SEUIL ALERTE</code>, <code>QUANTITE</code>.
+    </p>
+
+    <InputFile OnChange="OnFile" accept=".xlsx" />
+
+    @if (!string.IsNullOrWhiteSpace(Message))
+    {
+        <div class="mt-3 text-sm">@((MarkupString)Message)</div>
+    }
+</div>
+
+@code {
+    string SelectedSite = "Groupe Amour";
+    readonly string[] AllSites = new[]
+    {
+        "Groupe Amour", "Brutus", "Maillard", "Merlot", "Bacchus", "Gramma", "Bistrot Maurice"
+    };
+
+    string? Message;
+
+    async Task OnFile(InputFileChangeEventArgs e)
+    {
+        Message = null;
+        try
+        {
+            var file = e.File;
+            if (file == null) return;
+
+            using var ms = new MemoryStream();
+            using var fs = file.OpenReadStream(long.MaxValue);
+            await fs.CopyToAsync(ms);
+            ms.Position = 0;
+
+            var count = CellarSvc.ImportExcel(ms, SelectedSite);
+            Message = $"✅ Import terminé. <b>{count}</b> lignes intégrées pour <b>{SelectedSite}</b>.";
+        }
+        catch (Exception ex)
+        {
+            Message = $"❌ Erreur import : {ex.Message}";
+        }
+        StateHasChanged();
+    }
+}

@@ -1,0 +1,9 @@
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.csproj.AssemblyReference.cache
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\rpswa.dswa.cache.json
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.GeneratedMSBuildEditorConfig.editorconfig
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.AssemblyInfoInputs.cache
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.AssemblyInfo.cs
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.csproj.CoreCompileInputs.cache
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.MvcApplicationPartsAssemblyInfo.cache
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.RazorAssemblyInfo.cache
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.RazorAssemblyInfo.cs

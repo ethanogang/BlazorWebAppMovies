@@ -1,0 +1,49 @@
+@page "/rfid/inventory"
+@using MaCaveServeur.Services
+@inject CellarService CellarSvc
+@inject AppState State
+
+<h1>📡 Inventaire RFID — @(State.IsAll ? "Groupe Amour" : State.SelectedSite)</h1>
+<p>Collez vos EPC scannés, puis <em>Comparer</em>.</p>
+
+<textarea rows="6" @bind="pasted" style="width:100%"></textarea><br />
+<button class="btn" @onclick="Do">Comparer</button>
+
+@if (res is not null)
+{
+  var presents = State.IsAll ? res.Present : res.Present.Where(x => x.Bottle?.Location == State.SelectedSite).ToList();
+  var missings = State.IsAll ? res.Missing : res.Missing.Where(x => x.Bottle?.Location == State.SelectedSite).ToList();
+
+  <div style="display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:12px;">
+    <div class="card">
+      <h3>Présents (@presents.Count)</h3>
+      @if (presents.Any())
+        { <ul>@foreach (var x in presents) { <li>@x.Bottle?.Name (@x.Bottle?.Vintage) — <span class="badge">@x.Epc</span></li> }</ul> }
+      else { <p style="color:#aaa">Aucun</p> }
+    </div>
+    <div class="card">
+      <h3>Manquants (@missings.Count)</h3>
+      @if (missings.Any())
+        { <ul>@foreach (var x in missings) { <li>@x.Bottle?.Name — <span class="badge warn">@x.Epc</span></li> }</ul> }
+      else { <p style="color:#aaa">Aucun</p> }
+    </div>
+    <div class="card">
+      <h3>Inconnus (@res.Unknown.Count)</h3>
+      @if (res.Unknown.Any())
+        { <ul>@foreach (var u in res.Unknown) { <li><span class="badge">@u</span></li> }</ul> }
+      else { <p style="color:#aaa">Aucun</p> }
+    </div>
+  </div>
+}
+
+@code {
+  string? pasted;
+  InventoryResult? res;
+
+  void Do()
+  {
+    var tags = (pasted ?? string.Empty)
+      .Split(new[] { "\r\n", "\n", ",", ";", " " }, StringSplitOptions.RemoveEmptyEntries);
+    res = CellarSvc.Reconcile(tags);
+  }
+}
