@@ -1,375 +1,187 @@
-@page "/wines"
-@inject CellarService CellarService
-@inject NavigationManager Navigation
+@page "/cellar"
 
-<PageTitle>Mes Vins - Ma Cave</PageTitle>
+@using MaCaveServeur.Models
+@using MaCaveServeur.Services
 
-<div class="min-h-screen bg-gray-50 p-4 md:p-6 lg:p-8">
-    <div class="max-w-7xl mx-auto">
-        
-        <!-- En-tête de page -->
-        <div class="mb-8">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
-                <div>
-                    <h1 class="section-title text-4xl mb-2">🍷 Ma Collection</h1>
-                    <p class="text-gray-600">
-                        @FilteredWines.Count() bouteille@(FilteredWines.Count() > 1 ? "s" : "") 
-                        • @FilteredWines.Sum(w => w.Quantity) unité@(FilteredWines.Sum(w => w.Quantity) > 1 ? "s" : "") en stock
-                    </p>
-                </div>
-                <div class="flex gap-3">
-                    <button class="btn-primary" @onclick="NavigateToAdd">
-                        ➕ Ajouter un vin
-                    </button>
-                    <button class="btn-secondary" @onclick="ExportToCsv">
-                        📥 Exporter
-                    </button>
-                </div>
+@inject CellarService CellarSvc
+@inject AppState State
+@inject NavigationManager Nav
+
+<PageTitle>Ma Cave</PageTitle>
+
+<div class="max-w-7xl mx-auto">
+
+    <header class="glass-panel mb-6 p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white">📦 Ma Cave</h1>
+                <p class="text-white/70">
+                    Site : <span class="font-semibold">@State.CurrentSiteName</span>
+                </p>
             </div>
 
-            <!-- Barre de recherche et filtres -->
-            <div class="main-panel">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    
-                    <!-- Recherche -->
-                    <div class="md:col-span-2">
-                        <input 
-                            type="text" 
-                            class="input-field" 
-                            placeholder="🔍 Rechercher un vin, région, millésime..."
-                            @bind="SearchQuery"
-                            @bind:event="oninput"
-                        />
-                    </div>
+            <div class="flex flex-wrap gap-3">
+                <button class="btn-primary" @onclick="NewBottle">+ Ajouter</button>
+                <button class="btn-secondary" @onclick="GoDashboard">Dashboard</button>
+                <button class="btn-secondary" @onclick="GoTransfer">Transférer</button>
+            </div>
+        </div>
+    </header>
 
-                    <!-- Filtre région -->
-                    <div>
-                        <select class="select-field" @bind="SelectedRegion">
-                            <option value="">Toutes les régions</option>
-                            @foreach (var region in AllRegions)
-                            {
-                                <option value="@region">@region</option>
-                            }
-                        </select>
-                    </div>
+    <div class="glass-panel p-5 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+                <label class="label">Filtrer par site</label>
+                <select class="select" @bind="SelectedSiteCode" @bind:after="OnSiteChanged">
+                    @foreach (var s in State.AllSites)
+                    {
+                        <option value="@s.Code">@s.Label</option>
+                    }
+                </select>
+            </div>
 
-                    <!-- Filtre type -->
-                    <div>
-                        <select class="select-field" @bind="SelectedType">
-                            <option value="">Tous les types</option>
-                            <option value="Rouge">🍷 Rouge</option>
-                            <option value="Blanc">🥂 Blanc</option>
-                            <option value="Rosé">🌸 Rosé</option>
-                            <option value="Champagne">🍾 Champagne</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Filtres actifs -->
-                @if (!string.IsNullOrEmpty(SearchQuery) || !string.IsNullOrEmpty(SelectedRegion) || !string.IsNullOrEmpty(SelectedType))
-                {
-                    <div class="mt-4 flex items-center gap-2 flex-wrap">
-                        <span class="text-sm text-gray-600">Filtres actifs:</span>
-                        
-                        @if (!string.IsNullOrEmpty(SearchQuery))
-                        {
-                            <span class="badge badge-accent flex items-center gap-2">
-                                "@SearchQuery"
-                                <button @onclick="() => SearchQuery = string.Empty">✕</button>
-                            </span>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(SelectedRegion))
-                        {
-                            <span class="badge badge-accent flex items-center gap-2">
-                                @SelectedRegion
-                                <button @onclick="() => SelectedRegion = string.Empty">✕</button>
-                            </span>
-                        }
-                        
-                        @if (!string.IsNullOrEmpty(SelectedType))
-                        {
-                            <span class="badge badge-accent flex items-center gap-2">
-                                @SelectedType
-                                <button @onclick="() => SelectedType = string.Empty">✕</button>
-                            </span>
-                        }
-
-                        <button class="text-sm text-accent hover:text-accent-deep font-semibold" @onclick="ClearFilters">
-                            Effacer tout
-                        </button>
-                    </div>
-                }
+            <div class="md:col-span-2">
+                <label class="label">Recherche (producteur / nom / région)</label>
+                <input class="input" placeholder="Ex: Bordeaux, Domaine..., etc."
+                       @bind="Search" @bind:event="oninput" />
             </div>
         </div>
 
-        <!-- Toggle Vue -->
-        <div class="mb-6 flex items-center gap-4">
-            <span class="text-sm font-semibold text-gray-600">Vue:</span>
-            <div class="inline-flex rounded-lg border-2 border-gray-200 p-1 bg-white">
-                <button 
-                    class="@(ViewMode == "grid" ? "bg-accent text-white" : "text-gray-600") px-4 py-2 rounded-lg transition-all"
-                    @onclick="() => ViewMode = \"grid\"">
-                    ⊞ Grille
-                </button>
-                <button 
-                    class="@(ViewMode == "list" ? "bg-accent text-white" : "text-gray-600") px-4 py-2 rounded-lg transition-all"
-                    @onclick="() => ViewMode = \"list\"">
-                    ☰ Liste
-                </button>
+        <div class="mt-4 flex gap-3">
+            <button class="btn-secondary" @onclick="Reload">Rafraîchir</button>
+        </div>
+    </div>
+
+    @if (!string.IsNullOrWhiteSpace(Alert))
+    {
+        <div class="glass-panel p-4 mb-6">
+            <div class="text-white">@Alert</div>
+        </div>
+    }
+
+    <div class="glass-panel p-5">
+        <div class="flex items-center justify-between mb-3">
+            <div class="text-white/70 text-sm">
+                Lignes : <span class="text-white font-semibold">@Filtered.Count</span>
+                — Stock total : <span class="text-white font-semibold">@Filtered.Sum(b => b.Quantity)</span>
             </div>
         </div>
 
-        <!-- Contenu principal selon la vue -->
-        @if (ViewMode == "grid")
+        @if (Filtered.Count == 0)
         {
-            <!-- Vue en grille -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                @foreach (var wine in FilteredWines)
-                {
-                    <div class="wine-card p-6 hover-lift">
-                        <!-- Image de la bouteille -->
-                        <div class="w-full h-48 bg-gradient-gold rounded-xl flex items-center justify-center text-6xl mb-4">
-                            @GetWineIcon(wine.Type)
-                        </div>
-
-                        <!-- Infos principales -->
-                        <div class="mb-4">
-                            <div class="flex items-start justify-between mb-2">
-                                <h3 class="text-xl font-bold text-slate-dark line-clamp-2 flex-1">
-                                    @wine.Name
-                                </h3>
-                                @if (wine.Quantity <= 3)
-                                {
-                                    <span class="badge badge-warning flex-shrink-0 ml-2">⚠️ Stock bas</span>
-                                }
-                                else
-                                {
-                                    <span class="badge badge-success flex-shrink-0 ml-2">✓ @wine.Quantity</span>
-                                }
-                            </div>
-
-                            <div class="space-y-2 text-sm text-gray-600">
-                                <p class="flex items-center gap-2">
-                                    <span>📍</span>
-                                    <span class="font-semibold">@wine.Region</span>
-                                </p>
-                                <p class="flex items-center gap-2">
-                                    <span>📅</span>
-                                    <span>Millésime @wine.Year</span>
-                                </p>
-                                <p class="flex items-center gap-2">
-                                    <span>🍷</span>
-                                    <span>@wine.Type</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <div class="divider"></div>
-
-                        <!-- Prix et actions -->
-                        <div class="flex items-center justify-between">
-                            <div>
-                                <p class="text-sm text-gray-500">Prix unitaire</p>
-                                <p class="text-2xl font-bold text-gradient-gold">
-                                    @wine.Price.ToString("C")
-                                </p>
-                            </div>
-                            <div class="flex gap-2">
-                                <button class="btn-ghost" @onclick="() => EditWine(wine.Id)" title="Modifier">
-                                    ✏️
-                                </button>
-                                <button class="btn-ghost text-red-500 hover:bg-red-50" @onclick="() => ConfirmDelete(wine.Id)" title="Supprimer">
-                                    🗑️
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
+            <div class="text-white/70">Aucune bouteille.</div>
         }
         else
         {
-            <!-- Vue en liste -->
-            <div class="main-panel">
-                <div class="overflow-x-auto">
-                    <table class="elegant-table">
-                        <thead>
-                            <tr>
-                                <th>Vin</th>
-                                <th>Région</th>
-                                <th>Millésime</th>
-                                <th>Type</th>
-                                <th>Stock</th>
-                                <th>Prix</th>
-                                <th>Valeur totale</th>
-                                <th>Actions</th>
+            <div class="overflow-auto">
+                <table class="table">
+                    <thead class="thead">
+                        <tr>
+                            <th>Site</th>
+                            <th>Producteur</th>
+                            <th>Nom</th>
+                            <th>Région</th>
+                            <th>Millésime</th>
+                            <th class="text-right">Stock</th>
+                            <th class="text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var b in Filtered)
+                        {
+                            <tr class="trow">
+                                <td>@(b.SiteCode ?? "-")</td>
+                                <td>@((b.Producer ?? "").Trim())</td>
+                                <td>@((b.Name ?? "").Trim())</td>
+                                <td>@((b.Region ?? "").Trim())</td>
+                                <td>@(b.Vintage > 0 ? b.Vintage : "")</td>
+                                <td class="text-right font-semibold">@b.Quantity</td>
+                                <td class="text-right">
+                                    <div class="flex justify-end gap-2">
+                                        <button class="btn-secondary" @onclick="() => EditBottle(b.Id)">Éditer</button>
+                                        <button class="btn-secondary" @onclick="() => TransferBottle(b.Id)">Transférer</button>
+                                        <button class="btn-danger" @onclick="() => DeleteBottle(b.Id)">Supprimer</button>
+                                    </div>
+                                </td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            @foreach (var wine in FilteredWines)
-                            {
-                                <tr>
-                                    <td>
-                                        <div class="flex items-center gap-3">
-                                            <span class="text-2xl">@GetWineIcon(wine.Type)</span>
-                                            <div>
-                                                <p class="font-bold text-slate-dark">@wine.Name</p>
-                                                @if (!string.IsNullOrEmpty(wine.Producer))
-                                                {
-                                                    <p class="text-sm text-gray-500">@wine.Producer</p>
-                                                }
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td class="font-semibold">@wine.Region</td>
-                                    <td>@wine.Year</td>
-                                    <td>
-                                        <span class="badge badge-info">@wine.Type</span>
-                                    </td>
-                                    <td>
-                                        @if (wine.Quantity <= 3)
-                                        {
-                                            <span class="badge badge-warning">⚠️ @wine.Quantity</span>
-                                        }
-                                        else
-                                        {
-                                            <span class="badge badge-success">@wine.Quantity</span>
-                                        }
-                                    </td>
-                                    <td class="text-gold font-bold">@wine.Price.ToString("C")</td>
-                                    <td class="text-gradient-gold font-bold">@((wine.Price * wine.Quantity).ToString("C"))</td>
-                                    <td>
-                                        <div class="flex gap-2">
-                                            <button class="btn-ghost text-sm" @onclick="() => EditWine(wine.Id)">
-                                                ✏️ Modifier
-                                            </button>
-                                            <button class="btn-ghost text-sm text-red-500 hover:bg-red-50" @onclick="() => ConfirmDelete(wine.Id)">
-                                                🗑️
-                                            </button>
-                                        </div>
-                                    </td>
-                                </tr>
-                            }
-                        </tbody>
-                    </table>
-                </div>
+                        }
+                    </tbody>
+                </table>
             </div>
         }
-
-        <!-- Message si aucun résultat -->
-        @if (!FilteredWines.Any())
-        {
-            <div class="main-panel text-center py-16">
-                <div class="text-6xl mb-4">🔍</div>
-                <h3 class="text-2xl font-bold text-slate-dark mb-2">Aucun vin trouvé</h3>
-                <p class="text-gray-600 mb-6">
-                    Essayez de modifier vos critères de recherche
-                </p>
-                <button class="btn-secondary" @onclick="ClearFilters">
-                    Réinitialiser les filtres
-                </button>
-            </div>
-        }
-
     </div>
+
 </div>
 
 @code {
-    // Propriétés de filtrage
-    private string SearchQuery { get; set; } = string.Empty;
-    private string SelectedRegion { get; set; } = string.Empty;
-    private string SelectedType { get; set; } = string.Empty;
-    private string ViewMode { get; set; } = "grid"; // "grid" ou "list"
+    private List<Bottle> All = new();
+    private List<Bottle> Filtered = new();
 
-    // Données
-    private List<Wine> AllWines => CellarService.GetAllWines();
-    private List<string> AllRegions => AllWines.Select(w => w.Region).Distinct().OrderBy(r => r).ToList();
+    private string SelectedSiteCode = "ALL";
+    private string Search = "";
+    private string? Alert;
 
-    // Vins filtrés
-    private IEnumerable<Wine> FilteredWines
+    protected override void OnInitialized()
     {
-        get
+        SelectedSiteCode = State.CurrentSiteCode;
+        Reload();
+    }
+
+    private void OnSiteChanged()
+    {
+        State.SetSite(SelectedSiteCode);
+        ApplyFilters();
+    }
+
+    private void Reload()
+    {
+        Alert = null;
+        All = CellarSvc.GetAllWines() ?? new List<Bottle>();
+        ApplyFilters();
+    }
+
+    private void ApplyFilters()
+    {
+        IEnumerable<Bottle> q = All;
+
+        if (!string.Equals(SelectedSiteCode, "ALL", StringComparison.OrdinalIgnoreCase))
         {
-            var wines = AllWines.AsEnumerable();
-
-            if (!string.IsNullOrEmpty(SearchQuery))
-            {
-                wines = wines.Where(w =>
-                    w.Name.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
-                    w.Region.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ||
-                    w.Year.ToString().Contains(SearchQuery) ||
-                    (w.Producer?.Contains(SearchQuery, StringComparison.OrdinalIgnoreCase) ?? false)
-                );
-            }
-
-            if (!string.IsNullOrEmpty(SelectedRegion))
-            {
-                wines = wines.Where(w => w.Region == SelectedRegion);
-            }
-
-            if (!string.IsNullOrEmpty(SelectedType))
-            {
-                wines = wines.Where(w => w.Type == SelectedType);
-            }
-
-            return wines.OrderBy(w => w.Name);
+            q = q.Where(b => string.Equals((b.SiteCode ?? "").Trim(), SelectedSiteCode, StringComparison.OrdinalIgnoreCase));
         }
-    }
 
-    // Méthodes
-    private string GetWineIcon(string type)
-    {
-        return type switch
+        var s = (Search ?? "").Trim();
+        if (!string.IsNullOrWhiteSpace(s))
         {
-            "Rouge" => "🍷",
-            "Blanc" => "🥂",
-            "Rosé" => "🌸",
-            "Champagne" => "🍾",
-            _ => "🍷"
-        };
+            q = q.Where(b =>
+                ((b.Producer ?? "").Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                ((b.Name ?? "").Contains(s, StringComparison.OrdinalIgnoreCase)) ||
+                ((b.Region ?? "").Contains(s, StringComparison.OrdinalIgnoreCase)));
+        }
+
+        Filtered = q
+            .OrderBy(b => b.SiteCode)
+            .ThenBy(b => b.Producer)
+            .ThenBy(b => b.Name)
+            .ToList();
     }
 
-    private void ClearFilters()
-    {
-        SearchQuery = string.Empty;
-        SelectedRegion = string.Empty;
-        SelectedType = string.Empty;
-    }
+    private void NewBottle() => Nav.NavigateTo("/cellar/new");
+    private void EditBottle(Guid id) => Nav.NavigateTo($"/cellar/new/{id}");
+    private void TransferBottle(Guid id) => Nav.NavigateTo($"/transfer/{id}");
+    private void GoTransfer() => Nav.NavigateTo("/transfer");
+    private void GoDashboard() => Nav.NavigateTo("/dashboard");
 
-    private void NavigateToAdd()
+    private void DeleteBottle(Guid id)
     {
-        Navigation.NavigateTo("/wines/add");
-    }
-
-    private void EditWine(Guid id)
-    {
-        Navigation.NavigateTo($"/wines/edit/{id}");
-    }
-
-    private void ConfirmDelete(Guid id)
-    {
-        // TODO: Implémenter une vraie modal de confirmation
-        // Pour l'instant, suppression directe
-        CellarService.DeleteWine(id);
-        StateHasChanged();
-    }
-
-    private void ExportToCsv()
-    {
-        // TODO: Implémenter l'export CSV
-    }
-
-    // Classe Wine (adaptez selon votre modèle réel)
-    public class Wine
-    {
-        public Guid Id { get; set; }
-        public string Name { get; set; }
-        public string Region { get; set; }
-        public int Year { get; set; }
-        public string Type { get; set; }
-        public decimal Price { get; set; }
-        public int Quantity { get; set; }
-        public string Producer { get; set; }
+        try
+        {
+            CellarSvc.DeleteWine(id);
+            Alert = "Bouteille supprimée.";
+            Reload();
+        }
+        catch (Exception ex)
+        {
+            Alert = $"Erreur suppression : {ex.Message}";
+        }
     }
 }

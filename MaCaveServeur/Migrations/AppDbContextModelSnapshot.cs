@@ -42,10 +42,6 @@ namespace MaCaveServeur.Migrations
                     b.Property<DateTime?>("LastSeenUtc")
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("Location")
-                        .HasMaxLength(128)
-                        .HasColumnType("TEXT");
-
                     b.Property<int>("LowStockThreshold")
                         .HasColumnType("INTEGER");
 
@@ -62,7 +58,7 @@ namespace MaCaveServeur.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("PurchasePrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("TEXT");
 
                     b.Property<int>("Quantity")
                         .HasColumnType("INTEGER");
@@ -76,7 +72,11 @@ namespace MaCaveServeur.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<decimal>("SalePrice")
-                        .HasColumnType("decimal(18,2)");
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SiteCode")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
 
                     b.Property<string>("Supplier")
                         .HasMaxLength(256)
@@ -86,6 +86,8 @@ namespace MaCaveServeur.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("SiteCode", "Producer", "Name", "Vintage", "Supplier");
 
                     b.ToTable("Bottles");
                 });

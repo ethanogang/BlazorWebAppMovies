@@ -1,337 +1,140 @@
 @page "/dashboard"
+
 @using MaCaveServeur.Models
 @using MaCaveServeur.Services
+
 @inject CellarService CellarService
-@inject OrderService OrderService
+@inject AppState State
+@inject NavigationManager Nav
 
-<PageTitle>Dashboard - Ma Cave</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<!-- Conteneur principal avec fond dégradé -->
-<div class="min-h-screen bg-gradient-dark p-4 md:p-6 lg:p-8">
-    <div class="max-w-7xl mx-auto">
-        
-        <!-- En-tête avec effet de verre -->
-        <header class="glass-panel mb-8">
-            <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 class="text-4xl md:text-5xl font-bold text-white mb-2">
-                        🍷 Ma Cave
-                    </h1>
-                    <p class="text-gray-300">
-                        Gérez votre collection avec élégance
-                    </p>
-                </div>
-                <div class="flex gap-3">
-                    <button class="btn-gold" @onclick="NavigateToAddWine">
-                        + Ajouter une bouteille
-                    </button>
-                    <button class="btn-secondary">
-                        📊 Rapports
-                    </button>
-                </div>
-            </div>
-        </header>
+<style>
+.dashboard-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
 
-        <!-- Cartes de statistiques -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            
-            <!-- Total bouteilles -->
-            <div class="stat-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="stat-label">Bouteilles totales</p>
-                        <p class="stat-value">@TotalBottles</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            <span class="text-green-600">↗ +12</span> ce mois
-                        </p>
-                    </div>
-                    <div class="stat-icon">
-                        🍾
-                    </div>
-                </div>
-            </div>
+.panel {
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
 
-            <!-- Valeur totale -->
-            <div class="stat-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="stat-label">Valeur totale</p>
-                        <p class="text-3xl font-bold text-gradient-gold">@TotalValue.ToString("C")</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            Estimation actuelle
-                        </p>
-                    </div>
-                    <div class="stat-icon bg-gold/10">
-                        💰
-                    </div>
-                </div>
-            </div>
+.kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
 
-            <!-- Régions -->
-            <div class="stat-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="stat-label">Régions</p>
-                        <p class="stat-value">@TotalRegions</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            France, Italie, Espagne...
-                        </p>
-                    </div>
-                    <div class="stat-icon bg-wine-red/10">
-                        🌍
-                    </div>
-                </div>
-            </div>
+.kpi {
+    background: rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px;
+}
 
-            <!-- Commandes en cours -->
-            <div class="stat-card">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <p class="stat-label">Commandes</p>
-                        <p class="stat-value">@PendingOrders</p>
-                        <p class="text-xs text-gray-500 mt-1">
-                            En attente de livraison
-                        </p>
-                    </div>
-                    <div class="stat-icon bg-blue-500/10">
-                        📦
-                    </div>
-                </div>
-            </div>
-        </div>
+.kpi-title {
+    color: rgba(255,255,255,0.7);
+    font-size: 14px;
+}
 
-        <!-- Grille principale : Vins récents + Graphiques -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-            
-            <!-- Vins récemment ajoutés (2/3) -->
-            <div class="lg:col-span-2">
-                <div class="main-panel">
-                    <div class="section-header">
-                        <h2 class="section-title">Derniers ajouts</h2>
-                        <a href="/cellar" class="text-accent hover:text-accent-deep font-semibold">
-                            Voir tout →
-                        </a>
-                    </div>
+.kpi-value {
+    font-size: 32px;
+    font-weight: bold;
+    margin-top: 6px;
+}
 
-                    <div class="space-y-4">
-                        @foreach (var wine in RecentWines.Take(5))
-                        {
-                            <div class="wine-card p-4 hover-lift">
-                                <div class="flex items-center gap-4">
-                                    <!-- Image/Icône -->
-                                    <div class="w-16 h-20 bg-gradient-gold rounded-lg flex items-center justify-center text-3xl flex-shrink-0">
-                                        🍷
-                                    </div>
-                                    
-                                    <!-- Infos -->
-                                    <div class="flex-1 min-w-0">
-                                        <div class="flex items-start justify-between gap-2 mb-2">
-                                            <h3 class="text-lg font-bold text-slate-dark truncate">
-                                                @wine.Name
-                                            </h3>
-                                            <span class="badge badge-success flex-shrink-0">
-                                                @wine.Quantity en stock
-                                            </span>
-                                        </div>
-                                        
-                                        <div class="flex flex-wrap gap-3 text-sm text-gray-600">
-                                            <span>📍 @wine.Region</span>
-                                            <span>📅 @wine.Year</span>
-                                            <span class="text-gold font-bold">💶 @wine.PurchasePrice.ToString("C")</span>
-                                        </div>
-                                    </div>
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+}
 
-                                    <!-- Actions -->
-                                    <div class="flex flex-col gap-2 flex-shrink-0">
-                                        <button class="btn-ghost text-sm" @onclick="() => ViewDetails(wine.Id)">
-                                            👁️ Voir
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        }
+.actions button {
+    padding: 10px 16px;
+    border-radius: 12px;
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+}
 
-                        @if (!RecentWines.Any())
-                        {
-                            <div class="text-center py-12 text-gray-400">
-                                <div class="text-6xl mb-4">🍾</div>
-                                <p class="text-lg">Aucun vin pour le moment</p>
-                                <button class="btn-primary mt-4" @onclick="NavigateToAddWine">
-                                    Ajouter votre premier vin
-                                </button>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
+.btn-primary {
+    background: white;
+    color: black;
+}
 
-            <!-- Sidebar : Alertes + Actions rapides (1/3) -->
-            <div class="space-y-6">
-                
-                <!-- Alertes de stock -->
-                <div class="main-panel">
-                    <h3 class="text-xl font-bold text-slate-dark mb-4 flex items-center gap-2">
-                        ⚠️ Alertes
-                    </h3>
-                    
-                    @if (LowStockWines.Any())
-                    {
-                        <div class="space-y-3">
-                            @foreach (var wine in LowStockWines.Take(3))
-                            {
-                                <div class="alert-warning">
-                                    <p class="font-semibold">@wine.Name</p>
-                                    <p class="text-sm">Stock faible: @wine.Quantity bouteilles</p>
-                                </div>
-                            }
-                        </div>
-                    }
-                    else
-                    {
-                        <div class="alert-success">
-                            <p class="font-semibold">✓ Tous les stocks sont OK</p>
-                        </div>
-                    }
-                </div>
+.btn-secondary {
+    background: rgba(255,255,255,0.15);
+    color: white;
+}
+</style>
 
-                <!-- Actions rapides -->
-                <div class="main-panel">
-                    <h3 class="text-xl font-bold text-slate-dark mb-4">
-                        🚀 Actions rapides
-                    </h3>
-                    
-                    <div class="space-y-2">
-                        <button class="w-full btn-secondary justify-start" @onclick="NavigateToAddWine">
-                            ➕ Ajouter un vin
-                        </button>
-                        <button class="w-full btn-secondary justify-start" @onclick="NavigateToOrders">
-                            📦 Nouvelle commande
-                        </button>
-                        <button class="w-full btn-secondary justify-start" @onclick="NavigateToSuppliers">
-                            🏢 Gérer fournisseurs
-                        </button>
-                        <button class="w-full btn-secondary justify-start">
-                            📊 Exporter données
-                        </button>
-                    </div>
-                </div>
+<div class="dashboard-container">
 
-                <!-- Top régions -->
-                <div class="main-panel">
-                    <h3 class="text-xl font-bold text-slate-dark mb-4">
-                        🏆 Top régions
-                    </h3>
-                    
-                    <div class="space-y-3">
-                        @foreach (var region in TopRegions.Take(5))
-                        {
-                            <div class="flex items-center justify-between">
-                                <span class="text-sm font-medium">@region.Name</span>
-                                <span class="badge badge-accent">@region.Count</span>
-                            </div>
-                        }
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Section commandes récentes -->
-        <div class="main-panel">
-            <div class="section-header">
-                <h2 class="section-title">Commandes récentes</h2>
-                <a href="/orders" class="text-accent hover:text-accent-deep font-semibold">
-                    Voir tout →
-                </a>
-            </div>
-
-            <div class="overflow-x-auto">
-                <table class="elegant-table">
-                    <thead>
-                        <tr>
-                            <th>N° Commande</th>
-                            <th>Date</th>
-                            <th>Fournisseur</th>
-                            <th>Articles</th>
-                            <th>Total</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach (var order in RecentOrders.Take(5))
-                        {
-                            <tr>
-                                <td class="font-mono text-sm">@order.Id.ToString().Substring(0, 8)</td>
-                                <td>@order.CreationDate.ToString("dd/MM/yyyy")</td>
-                                <td class="font-semibold">@order.SupplierName</td>
-                                <td>@order.Lines.Count articles</td>
-                                <td class="text-gold font-bold">@order.TotalAmount.ToString("C")</td>
-                                <td>
-                                    @if (order.IsDelivered)
-                                    {
-                                        <span class="badge badge-success">Livrée</span>
-                                    }
-                                    else
-                                    {
-                                        <span class="badge badge-warning">En cours</span>
-                                    }
-                                </td>
-                                <td>
-                                    <button class="btn-ghost text-sm" @onclick="() => ViewOrder(order.Id)">
-                                        👁️ Détails
-                                    </button>
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
+    <!-- HEADER -->
+    <div class="panel">
+        <h1 style="font-size:32px;font-weight:bold">🧭 Dashboard</h1>
+        <p style="opacity:0.7">
+            Vue globale — <strong>@State.CurrentSiteName</strong>
+        </p>
     </div>
+
+    <!-- KPI -->
+    <div class="kpi-grid">
+        <div class="kpi">
+            <div class="kpi-title">Références</div>
+            <div class="kpi-value">@TotalReferences</div>
+        </div>
+
+        <div class="kpi">
+            <div class="kpi-title">Bouteilles en stock</div>
+            <div class="kpi-value">@TotalBottles</div>
+        </div>
+
+        <div class="kpi">
+            <div class="kpi-title">Sous seuil</div>
+            <div class="kpi-value">@LowStock</div>
+        </div>
+
+        <div class="kpi">
+            <div class="kpi-title">Fournisseurs</div>
+            <div class="kpi-value">@Suppliers</div>
+        </div>
+    </div>
+
+    <!-- ACTIONS -->
+    <div class="panel">
+        <h2 style="font-size:20px;font-weight:bold;margin-bottom:16px">⚡ Actions rapides</h2>
+
+        <div class="actions">
+            <button class="btn-primary" @onclick="GoAdd">➕ Ajouter une bouteille</button>
+            <button class="btn-secondary" @onclick="GoCellar">📦 Voir la cave</button>
+            <button class="btn-secondary" @onclick="GoOrders">🧾 Commandes</button>
+        </div>
+    </div>
+
 </div>
 
 @code {
-    // Propriétés calculées
-    private int TotalBottles => CellarService.GetAllWines().Sum(w => w.Quantity);
-    private decimal TotalValue => CellarService.GetAllWines().Sum(w => w.PurchasePrice * w.Quantity);
-    private int TotalRegions => CellarService.GetAllWines().Select(w => w.Region).Distinct().Count();
-    private int PendingOrders => OrderService.GetAllOrders().Count(o => !o.IsDelivered);
-    
-    private List<WineBottle> RecentWines => CellarService.GetAllWines().OrderByDescending(w => w.Id).ToList();
-    private List<WineBottle> LowStockWines => CellarService.GetAllWines().Where(w => w.Quantity <= 3).ToList();
-    private List<Order> RecentOrders => OrderService.GetAllOrders().OrderByDescending(o => o.CreationDate).ToList();
-    
-    private List<(string Name, int Count)> TopRegions => 
-        CellarService.GetAllWines()
-            .GroupBy(w => w.Region)
-            .Select(g => (Name: g.Key, Count: g.Sum(w => w.Quantity)))
-            .OrderByDescending(x => x.Count)
-            .ToList();
+    private List<Bottle> _bottles = new();
 
-    // Méthodes de navigation
-    private void NavigateToAddWine() 
-    { 
-        // TODO: Implémenter navigation
+    protected override void OnInitialized()
+    {
+        _bottles = CellarService.GetAllWines() ?? new();
     }
-    
-    private void NavigateToOrders() 
-    { 
-        // TODO: Implémenter navigation
-    }
-    
-    private void NavigateToSuppliers() 
-    { 
-        // TODO: Implémenter navigation
-    }
-    
-    private void ViewDetails(Guid id) 
-    { 
-        // TODO: Implémenter navigation
-    }
-    
-    private void ViewOrder(Guid id) 
-    { 
-        // TODO: Implémenter navigation
-    }
+
+    private int TotalReferences => _bottles.Count;
+    private int TotalBottles => _bottles.Sum(b => b.Quantity);
+    private int LowStock => _bottles.Count(b => b.Quantity <= (b.LowStockThreshold > 0 ? b.LowStockThreshold : 3));
+    private int Suppliers => _bottles
+        .Select(b => b.Supplier)
+        .Where(s => !string.IsNullOrWhiteSpace(s))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .Count();
+
+    private void GoAdd() => Nav.NavigateTo("/cellar/new");
+    private void GoCellar() => Nav.NavigateTo("/cellar");
+    private void GoOrders() => Nav.NavigateTo("/orders");
 }

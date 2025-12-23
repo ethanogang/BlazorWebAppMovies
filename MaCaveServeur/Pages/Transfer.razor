@@ -1,141 +1,150 @@
 @page "/transfer"
 @page "/transfer/{Id:guid}"
+
 @using MaCaveServeur.Models
-@inject MaCaveServeur.Services.CellarService CellarSvc
-@inject MaCaveServeur.Services.AppState State
+@using MaCaveServeur.Services
+
+@inject CellarService CellarSvc
+@inject AppState State
 @inject NavigationManager Nav
 
-<h1>🔁 Transfert entre établissements</h1>
+<PageTitle>Transfert</PageTitle>
 
-@if (!string.IsNullOrEmpty(alert))
-{
-  <div class="card" style="border-left:4px solid @(alertOk ? "#39b36b" : "#e65b62")">
-    @alert
-  </div>
-}
+<div class="max-w-4xl mx-auto">
 
-<div class="card" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px; align-items:start">
-  <div>
-    <label>Source (bouteille)</label>
-    <select @bind="sourceId" @bind:after="OnSourceChanged">
-      <option value="">— Choisir —</option>
-      @foreach (var b in SourceList)
-      {
-        <option value="@b.Id.ToString()">@FormatBottle(b)</option>
-      }
-    </select>
-  </div>
+    <header class="glass-panel mb-6 p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white">🔁 Transfert</h1>
+                <p class="text-white/70">Choisis une bouteille source, un site cible et une quantité.</p>
+            </div>
+            <button class="btn-secondary" @onclick="Back">Retour</button>
+        </div>
+    </header>
 
-  <div>
-    <label>Établissement cible</label>
-    <select @bind="targetSite">
-      <option value="">— Choisir —</option>
-      @foreach (var s in State.Sites)
-      {
-        <option value="@s">@s</option>
-      }
-    </select>
-  </div>
+    @if (!string.IsNullOrWhiteSpace(Alert))
+    {
+        <div class="glass-panel p-4 mb-6">
+            <div class="text-white">@Alert</div>
+        </div>
+    }
 
-  <div>
-    <label>Quantité à transférer</label>
-    <input type="number" min="1" @bind="qty" />
-    <div style="color:var(--muted); font-size:.9rem; margin-top:4px">
-      Dispo : @(selected?.Quantity ?? 0)
+    <div class="glass-panel p-6 space-y-5">
+        <div>
+            <label class="label">Bouteille source</label>
+            <select class="select" @bind="SelectedId" @bind:after="OnSourceChanged">
+                <option value="">— Choisir —</option>
+                @foreach (var b in SourceList)
+                {
+                    <option value="@b.Id.ToString()">@FormatBottle(b)</option>
+                }
+            </select>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="label">Site cible</label>
+                <select class="select" @bind="TargetSiteCode">
+                    <option value="">— Choisir —</option>
+                    @foreach (var s in State.AllSites.Where(s => s.Code != "ALL"))
+                    {
+                        <option value="@s.Code">@s.Label</option>
+                    }
+                </select>
+            </div>
+
+            <div>
+                <label class="label">Quantité</label>
+                <input class="input" type="number" min="1" @bind="Qty" />
+                <div class="text-white/60 text-sm mt-1">
+                    Dispo : <span class="text-white font-semibold">@((SelectedBottle?.Quantity) ?? 0)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button class="btn-primary" @onclick="DoTransfer" disabled="@(!CanTransfer)">Transférer</button>
+            <button class="btn-secondary" @onclick="Back">Annuler</button>
+        </div>
     </div>
-  </div>
-
-  <div>
-    <label>Options</label>
-    <div style="display:flex; gap:8px; align-items:center;">
-      <input type="checkbox" id="optDel" @bind="deleteWhenZero" />
-      <label for="optDel">Supprimer la référence source si stock = 0</label>
-    </div>
-  </div>
-</div>
-
-<div style="display:flex; gap:8px; margin-top:12px">
-  <button class="btn primary" @onclick="DoTransfer" disabled="@Disabled">Transférer</button>
-  <button class="btn ghost" @onclick="Back">Retour</button>
 </div>
 
 @code {
-  [Parameter] public Guid? Id { get; set; }
+    [Parameter] public Guid? Id { get; set; }
 
-  string? alert;
-  bool alertOk;
+    private List<Bottle> All = new();
+    private List<Bottle> SourceList = new();
 
-  string? sourceId;
-  string? targetSite;
-  int qty = 1;
-  bool deleteWhenZero = false;
+    private string? SelectedId;
+    private Bottle? SelectedBottle;
 
-  Bottle? selected;
+    private string? TargetSiteCode;
+    private int Qty = 1;
 
-  IEnumerable<Bottle> SourceList => CellarSvc.Bottles
-      .OrderBy(b => b.Location).ThenBy(b => b.Producer).ThenBy(b => b.Name);
+    private string? Alert;
 
-  protected override void OnInitialized()
-  {
-    if (Id.HasValue)
+    protected override void OnInitialized()
     {
-      selected = CellarSvc.Get(Id.Value);
-      sourceId = selected?.Id.ToString();
+        All = CellarSvc.GetAllWines() ?? new List<Bottle>();
+
+        SourceList = State.IsAll
+            ? All.OrderBy(b => b.SiteCode).ThenBy(b => b.Producer).ThenBy(b => b.Name).ToList()
+            : All.Where(b => string.Equals(b.SiteCode, State.CurrentSiteCode, StringComparison.OrdinalIgnoreCase))
+                 .OrderBy(b => b.Producer).ThenBy(b => b.Name).ToList();
+
+        if (Id.HasValue && Id.Value != Guid.Empty)
+        {
+            SelectedBottle = All.FirstOrDefault(b => b.Id == Id.Value);
+            if (SelectedBottle != null)
+            {
+                SelectedId = SelectedBottle.Id.ToString();
+                Qty = 1;
+            }
+        }
     }
-  }
 
-  void OnSourceChanged()
-  {
-    selected = Guid.TryParse(sourceId, out var gid) ? CellarSvc.Get(gid) : null;
-  }
-
-  bool Disabled => selected == null
-                   || string.IsNullOrWhiteSpace(targetSite)
-                   || qty <= 0
-                   || (selected?.Quantity ?? 0) <= 0;
-
-  void DoTransfer()
-  {
-    alert = null; alertOk = false;
-
-    if (selected == null) { alert = "Choisis une bouteille source."; return; }
-    if (string.IsNullOrWhiteSpace(selected.Location)) { alert = "La bouteille n’a pas de site source."; return; }
-    if (string.IsNullOrWhiteSpace(targetSite)) { alert = "Choisis un établissement cible."; return; }
-    if (string.Equals(selected.Location, targetSite, StringComparison.OrdinalIgnoreCase))
+    private void OnSourceChanged()
     {
-      alert = "La source et la destination sont identiques."; return;
-    }
-    if (qty <= 0) { alert = "Quantité invalide."; return; }
-    if (selected.Quantity <= 0) { alert = "La source n’a plus de stock."; return; }
+        Alert = null;
 
-    // Appel clair du service : (id, fromSite, toSite, qty)
-    var ok = CellarSvc.Transfer(selected.Id, selected.Location!, targetSite!, qty);
-    if (ok)
+        if (Guid.TryParse(SelectedId, out var id))
+        {
+            SelectedBottle = All.FirstOrDefault(b => b.Id == id);
+            Qty = 1;
+        }
+        else
+        {
+            SelectedBottle = null;
+        }
+    }
+
+    private bool CanTransfer =>
+        SelectedBottle != null
+        && !string.IsNullOrWhiteSpace(SelectedBottle.SiteCode)
+        && !string.IsNullOrWhiteSpace(TargetSiteCode)
+        && Qty > 0
+        && SelectedBottle.Quantity >= Qty
+        && !string.Equals(SelectedBottle.SiteCode, TargetSiteCode, StringComparison.OrdinalIgnoreCase);
+
+    private void DoTransfer()
     {
-      alertOk = true;
-      alert = $"Transfert effectué : {qty} vers {targetSite}.";
+        Alert = null;
 
-      // Option : supprimer la source si stock atteint 0
-      var gid = selected.Id;
-      selected = CellarSvc.Get(gid);
-      if (deleteWhenZero && (selected?.Quantity ?? 0) == 0)
-      {
-        CellarSvc.Delete(gid);
-        selected = null;
-        sourceId = null;
-        alert += " (référence source supprimée)";
-      }
+        if (SelectedBottle == null) { Alert = "Choisis une bouteille source."; return; }
+        if (string.IsNullOrWhiteSpace(TargetSiteCode)) { Alert = "Choisis un site cible."; return; }
 
-      StateHasChanged();
+        var ok = CellarSvc.Transfer(SelectedBottle.Id, SelectedBottle.SiteCode ?? "", TargetSiteCode!, Qty);
+        if (!ok)
+        {
+            Alert = "Transfert impossible (stock insuffisant ou sites invalides).";
+            return;
+        }
+
+        Nav.NavigateTo("/cellar");
     }
-    else
-    {
-      alert = "Transfert impossible (vérifie la quantité et le site cible).";
-    }
-  }
 
-  string FormatBottle(Bottle b)
-    => $"{(b.Location ?? "?").ToUpperInvariant()} · {b.Producer} – {b.Name} {(b.Vintage>0?$"({b.Vintage})":"")} · Stock {b.Quantity}";
+    private void Back() => Nav.NavigateTo("/cellar");
 
-  void Back() => Nav.NavigateTo("/cellar");
+    private static string FormatBottle(Bottle b)
+        => $"{(b.SiteCode ?? "?")} · {(b.Producer ?? "").Trim()} · {(b.Name ?? "").Trim()} {(b.Vintage > 0 ? $"({b.Vintage})" : "")} · Stock {b.Quantity}";
 }

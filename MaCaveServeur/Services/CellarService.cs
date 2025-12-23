@@ -1,7 +1,7 @@
-using System.Globalization;
 using Microsoft.EntityFrameworkCore;
 using OfficeOpenXml;
 using OfficeOpenXml.Style;
+using System.Globalization;
 using MaCaveServeur.Data;
 using MaCaveServeur.Models;
 
@@ -17,227 +17,100 @@ namespace MaCaveServeur.Services
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
         }
 
-        // =======================
-        //   LECTURE / ÉCRITURE
-        // =======================
-
-        // Compatibilité pages existantes
-        public IQueryable<Bottle> Bottles => _db.Bottles;
-
-        /// <summary>Retourne toutes les bouteilles (no tracking) pour affichage/dashboards.</summary>
+        // ------------------ API "nouvelle" ------------------
         public List<Bottle> GetAll() => _db.Bottles.AsNoTracking().ToList();
-
-        /// <summary>Alias IEnumerable si utilisé quelque part.</summary>
-        public IEnumerable<Bottle> All() => _db.Bottles.AsNoTracking().AsEnumerable();
 
         public Bottle? Get(Guid id) => _db.Bottles.Find(id);
 
+        /// <summary>
+        /// Ajout “intelligent” : si doublon détecté -> merge quantité, sinon création.
+        /// </summary>
         public void Add(Bottle b)
         {
+            BottleNormalization.NormalizeInPlace(b);
             if (b.Id == Guid.Empty) b.Id = Guid.NewGuid();
+
+            // Doublon ? -> merge
+            var existing = FindByBusinessKey(b);
+            if (existing != null)
+            {
+                MergeInto(existing, b, addQuantity: true);
+                _db.SaveChanges();
+                return;
+            }
+
             _db.Bottles.Add(b);
             _db.SaveChanges();
         }
 
+        /// <summary>
+        /// Upsert par ID (édition) : met à jour l’enregistrement existant.
+        /// </summary>
         public void Upsert(Bottle b)
         {
+            BottleNormalization.NormalizeInPlace(b);
+            if (b.Id == Guid.Empty) b.Id = Guid.NewGuid();
+
             var existing = _db.Bottles.FirstOrDefault(x => x.Id == b.Id);
             if (existing == null)
             {
+                // Si l'ID n'existe pas, on applique aussi la logique anti-doublon
                 Add(b);
                 return;
             }
 
-            existing.Color = b.Color;
-            existing.Name = b.Name;
-            existing.Appellation = b.Appellation;
-            existing.Producer = b.Producer;
-            existing.Country = b.Country;
-            existing.Region = b.Region;
-            existing.Supplier = b.Supplier;
-            existing.Grapes = b.Grapes;
-            existing.Vintage = b.Vintage;
-            existing.PurchasePrice = b.PurchasePrice;
-            existing.SalePrice = b.SalePrice;
-            existing.Quantity = b.Quantity;
-            existing.LowStockThreshold = b.LowStockThreshold;
-            existing.Location = b.Location;
-
+            MergeInto(existing, b, addQuantity: false);
             _db.SaveChanges();
         }
 
         public void Delete(Guid id)
         {
-            var e = _db.Bottles.Find(id);
-            if (e != null)
-            {
-                _db.Bottles.Remove(e);
-                _db.SaveChanges();
-            }
-        }
+            var b = _db.Bottles.Find(id);
+            if (b == null) return;
 
-        /// <summary>Supprime toutes les bouteilles (utilisé par une route /purge éventuelle).</summary>
-        public int DeleteAll()
-        {
-            var all = _db.Bottles.ToList();
-            _db.Bottles.RemoveRange(all);
+            _db.Bottles.Remove(b);
             _db.SaveChanges();
-            return all.Count;
         }
 
-        // ====================
-        //   IMPORT / EXPORT
-        // ====================
+        // ------------------ API "ancienne" (wrappers Wine) ------------------
+        public List<Bottle> GetAllWines() => GetAll();
+        public Bottle? GetWine(Guid id) => Get(id);
+        public void AddWine(Bottle b) => Add(b);
+        public void UpdateWine(Bottle b) => Upsert(b);
+        public void DeleteWine(Guid id) => Delete(id);
 
-        /// <summary>
-        /// Importe un fichier Excel selon ton mapping (en-têtes exacts) :
-        /// COULEUR | NOM | APPELATION | PRODUCTEUR | PAYS | REGION | FOURNISSEUR | MILLESIME | CEPAGES | PRIX ACHAT | PRIX VENTE | SEUIL ALERTE | QUANTITE
-        /// Le site d’affectation est passé en paramètre (Location).
-        /// </summary>
-        public int ImportExcel(Stream excelStream, string siteCode)
-        {
-            using var p = new ExcelPackage(excelStream);
-            var ws = p.Workbook.Worksheets[0];
-
-            // Lecture de l’en-tête (ligne 1)
-            var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            int col = 1;
-            while (!string.IsNullOrWhiteSpace(ws.Cells[1, col].Text))
-            {
-                headers[ws.Cells[1, col].Text.Trim()] = col;
-                col++;
-            }
-
-            // Helper pour obtenir la valeur d'une colonne par nom
-            string T(int row, string key) =>
-                headers.TryGetValue(key, out var c) ? (ws.Cells[row, c].Text ?? "").Trim() : "";
-
-            int imported = 0;
-            int row = 2;
-
-            while (true)
-            {
-                var rawName = T(row, "NOM");
-                var rawProducer = T(row, "PRODUCTEUR");
-                var rawApp = T(row, "APPELATION"); // orthographe telle que fournie
-                var rawEmptyCheck = string.Concat(rawName, rawProducer, rawApp).Trim();
-
-                if (string.IsNullOrWhiteSpace(rawEmptyCheck))
-                    break; // fin des données
-
-                var b = new Bottle
-                {
-                    Id = Guid.NewGuid(),
-                    Color = T(row, "COULEUR"),
-                    Name = rawName,
-                    Appellation = rawApp,
-                    Producer = rawProducer,
-                    Country = T(row, "PAYS"),
-                    Region = T(row, "REGION"),
-                    Supplier = T(row, "FOURNISSEUR"),
-                    Grapes = T(row, "CEPAGES"),
-                    Vintage = ParseIntSafe(T(row, "MILLESIME")),
-                    PurchasePrice = ParseMoney(T(row, "PRIX ACHAT")),
-                    SalePrice = ParseMoney(T(row, "PRIX VENTE")),
-                    LowStockThreshold = ParseIntSafe(T(row, "SEUIL ALERTE"), 1),
-                    Quantity = ParseIntSafe(T(row, "QUANTITE"), 0),
-                    Location = siteCode?.Trim().ToUpperInvariant() ?? "ALL"
-                };
-
-                _db.Bottles.Add(b);
-                imported++;
-                row++;
-            }
-
-            _db.SaveChanges();
-            return imported;
-        }
-
-        /// <summary>
-        /// Exporte l’ensemble des bouteilles en Excel avec les mêmes colonnes que l’import (sans RFID/EPC).
-        /// </summary>
-        public byte[] ExportExcel()
-        {
-            using var p = new ExcelPackage();
-            var ws = p.Workbook.Worksheets.Add("Cave");
-
-            // En-têtes
-            string[] H = {
-                "COULEUR","NOM","APPELATION","PRODUCTEUR","PAYS","REGION",
-                "FOURNISSEUR","MILLESIME","CEPAGES","PRIX ACHAT","PRIX VENTE",
-                "SEUIL ALERTE","QUANTITE","SITE"
-            };
-            for (int i = 0; i < H.Length; i++)
-                ws.Cells[1, i + 1].Value = H[i];
-
-            // Lignes
-            int r = 2;
-            foreach (var b in _db.Bottles.AsNoTracking())
-            {
-                ws.Cells[r, 1].Value = b.Color;
-                ws.Cells[r, 2].Value = b.Name;
-                ws.Cells[r, 3].Value = b.Appellation;
-                ws.Cells[r, 4].Value = b.Producer;
-                ws.Cells[r, 5].Value = b.Country;
-                ws.Cells[r, 6].Value = b.Region;
-                ws.Cells[r, 7].Value = b.Supplier;
-                ws.Cells[r, 8].Value = b.Vintage;
-                ws.Cells[r, 9].Value = b.Grapes;
-                ws.Cells[r,10].Value = b.PurchasePrice;
-                ws.Cells[r,11].Value = b.SalePrice;
-                ws.Cells[r,12].Value = b.LowStockThreshold;
-                ws.Cells[r,13].Value = b.Quantity;
-                ws.Cells[r,14].Value = b.Location;
-                r++;
-            }
-
-            // Style simple
-            using (var rng = ws.Cells[1, 1, 1, H.Length])
-            {
-                rng.Style.Font.Bold = true;
-                rng.Style.Fill.PatternType = ExcelFillStyle.Solid;
-                rng.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(28, 22, 48));
-                rng.Style.Font.Color.SetColor(System.Drawing.Color.White);
-            }
-            ws.Cells.AutoFitColumns();
-
-            return p.GetAsByteArray();
-        }
-
-        // ================
-        //    TRANSFERTS
-        // ================
-
-        /// <summary>
-        /// Transfère une quantité d’une bouteille vers un autre site.
-        /// - On décrémente la source.
-        /// - On cherche (même nom+millésime+fournisseur) dans le site cible, sinon on clone.
-        /// </summary>
+        // ------------------ Transfer ------------------
         public bool Transfer(Guid bottleId, string fromSite, string toSite, int quantity)
-            => Transfer(bottleId, fromSite, toSite, quantity, moveTags: false);
-
-        /// <summary>Surcharge avec moveTags ignoré (conservée pour compat code appelant).</summary>
-        public bool Transfer(Guid bottleId, string fromSite, string toSite, int quantity, bool moveTags)
         {
             if (quantity <= 0) return false;
 
-            var src = _db.Bottles.FirstOrDefault(b => b.Id == bottleId && b.Location == fromSite);
+            var srcSite = Sites.NormalizeOrThrow(fromSite);
+            var dstSite = Sites.NormalizeOrThrow(toSite);
+            if (srcSite == dstSite) return false;
+
+            var src = _db.Bottles.FirstOrDefault(b => b.Id == bottleId && b.SiteCode == srcSite);
             if (src == null) return false;
             if (src.Quantity < quantity) return false;
 
-            src.Quantity -= quantity;
+            // Trouve une bouteille “équivalente” sur le site cible
+            var probe = new Bottle
+            {
+                SiteCode = dstSite,
+                Producer = src.Producer,
+                Name = src.Name,
+                Vintage = src.Vintage,
+                Supplier = src.Supplier
+            };
+            BottleNormalization.NormalizeInPlace(probe);
 
-            var dst = _db.Bottles.FirstOrDefault(b =>
-                b.Location == toSite &&
-                b.Name == src.Name &&
-                b.Vintage == src.Vintage &&
-                b.Supplier == src.Supplier);
+            var dst = FindByBusinessKey(probe);
 
             if (dst == null)
             {
                 dst = new Bottle
                 {
                     Id = Guid.NewGuid(),
+                    SiteCode = dstSite,
                     Color = src.Color,
                     Name = src.Name,
                     Appellation = src.Appellation,
@@ -249,31 +122,207 @@ namespace MaCaveServeur.Services
                     Vintage = src.Vintage,
                     PurchasePrice = src.PurchasePrice,
                     SalePrice = src.SalePrice,
-                    Quantity = 0,
                     LowStockThreshold = src.LowStockThreshold,
-                    Location = toSite
+                    Quantity = 0,
+                    Notes = src.Notes
                 };
+                BottleNormalization.NormalizeInPlace(dst);
                 _db.Bottles.Add(dst);
             }
 
+            src.Quantity -= quantity;
             dst.Quantity += quantity;
 
             _db.SaveChanges();
             return true;
         }
 
-        // =================
-        //   HELPERS PARSE
-        // =================
+        // ------------------ Import/Export Excel ------------------
+        /// <summary>
+        /// Import “anti-doublons” : si la clé métier existe, on MERGE (additionne la quantité).
+        /// </summary>
+        public int ImportExcel(Stream excelStream, string siteCode)
+        {
+            var normalizedSite = Sites.NormalizeOrThrow(siteCode);
+
+            using var p = new ExcelPackage(excelStream);
+            var ws = p.Workbook.Worksheets[0];
+
+            var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            int col = 1;
+            while (!string.IsNullOrWhiteSpace(ws.Cells[1, col].Text))
+            {
+                headers[ws.Cells[1, col].Text.Trim()] = col;
+                col++;
+            }
+
+            int GetCol(string header) => headers.TryGetValue(header, out var c) ? c : -1;
+
+            var cColor = GetCol("COULEUR");
+            var cName = GetCol("NOM");
+            var cApp = GetCol("APPELATION");
+            var cProd = GetCol("PRODUCTEUR");
+            var cCountry = GetCol("PAYS");
+            var cRegion = GetCol("REGION");
+            var cSupplier = GetCol("FOURNISSEUR");
+            var cVintage = GetCol("MILLESIME");
+            var cGrapes = GetCol("CEPAGES");
+            var cBuy = GetCol("PRIX ACHAT");
+            var cSell = GetCol("PRIX VENTE");
+            var cLow = GetCol("SEUIL ALERTE");
+            var cQty = GetCol("QUANTITE");
+
+            int created = 0;
+            int merged = 0;
+
+            int row = 2;
+            while (!string.IsNullOrWhiteSpace(ws.Cells[row, cName > 0 ? cName : 1].Text))
+            {
+                var incoming = new Bottle
+                {
+                    Id = Guid.NewGuid(),
+                    SiteCode = normalizedSite,
+                    Color = cColor > 0 ? ws.Cells[row, cColor].Text : null,
+                    Name = cName > 0 ? ws.Cells[row, cName].Text : null,
+                    Appellation = cApp > 0 ? ws.Cells[row, cApp].Text : null,
+                    Producer = cProd > 0 ? ws.Cells[row, cProd].Text : null,
+                    Country = cCountry > 0 ? ws.Cells[row, cCountry].Text : null,
+                    Region = cRegion > 0 ? ws.Cells[row, cRegion].Text : null,
+                    Supplier = cSupplier > 0 ? ws.Cells[row, cSupplier].Text : null,
+                    Vintage = cVintage > 0 ? ParseIntSafe(ws.Cells[row, cVintage].Text) : 0,
+                    Grapes = cGrapes > 0 ? ws.Cells[row, cGrapes].Text : null,
+                    PurchasePrice = cBuy > 0 ? ParseMoney(ws.Cells[row, cBuy].Text) : 0m,
+                    SalePrice = cSell > 0 ? ParseMoney(ws.Cells[row, cSell].Text) : 0m,
+                    LowStockThreshold = cLow > 0 ? ParseIntSafe(ws.Cells[row, cLow].Text) : 0,
+                    Quantity = cQty > 0 ? ParseIntSafe(ws.Cells[row, cQty].Text) : 0
+                };
+
+                BottleNormalization.NormalizeInPlace(incoming);
+
+                var existing = FindByBusinessKey(incoming);
+                if (existing != null)
+                {
+                    // Merge : on additionne quantité, et on met à jour ce qui manque
+                    MergeInto(existing, incoming, addQuantity: true);
+                    merged++;
+                }
+                else
+                {
+                    _db.Bottles.Add(incoming);
+                    created++;
+                }
+
+                row++;
+            }
+
+            _db.SaveChanges();
+            return created + merged;
+        }
+
+        public byte[] ExportExcel(string? siteCode = null)
+        {
+            var normalizedSite = Sites.NormalizeOrNull(siteCode);
+
+            var list = _db.Bottles.AsNoTracking()
+                .Where(b => normalizedSite == null || b.SiteCode == normalizedSite)
+                .OrderBy(b => b.SiteCode).ThenBy(b => b.Producer).ThenBy(b => b.Name)
+                .ToList();
+
+            using var p = new ExcelPackage();
+            var ws = p.Workbook.Worksheets.Add("Cave");
+
+            var headers = new[]
+            {
+                "COULEUR","NOM","APPELATION","PRODUCTEUR","PAYS","REGION","FOURNISSEUR","MILLESIME","CEPAGES","PRIX ACHAT","PRIX VENTE","SEUIL ALERTE","QUANTITE","SITE"
+            };
+
+            for (int c = 0; c < headers.Length; c++)
+            {
+                ws.Cells[1, c + 1].Value = headers[c];
+                ws.Cells[1, c + 1].Style.Font.Bold = true;
+                ws.Cells[1, c + 1].Style.Fill.PatternType = ExcelFillStyle.Solid;
+                ws.Cells[1, c + 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+            }
+
+            int r = 2;
+            foreach (var b in list)
+            {
+                ws.Cells[r, 1].Value = b.Color;
+                ws.Cells[r, 2].Value = b.Name;
+                ws.Cells[r, 3].Value = b.Appellation;
+                ws.Cells[r, 4].Value = b.Producer;
+                ws.Cells[r, 5].Value = b.Country;
+                ws.Cells[r, 6].Value = b.Region;
+                ws.Cells[r, 7].Value = b.Supplier;
+                ws.Cells[r, 8].Value = b.Vintage;
+                ws.Cells[r, 9].Value = b.Grapes;
+                ws.Cells[r, 10].Value = b.PurchasePrice;
+                ws.Cells[r, 11].Value = b.SalePrice;
+                ws.Cells[r, 12].Value = b.LowStockThreshold;
+                ws.Cells[r, 13].Value = b.Quantity;
+                ws.Cells[r, 14].Value = b.SiteCode;
+                r++;
+            }
+
+            ws.Cells[ws.Dimension.Address].AutoFitColumns();
+            return p.GetAsByteArray();
+        }
+
+        // ------------------ Helpers anti-doublons ------------------
+
+        private Bottle? FindByBusinessKey(Bottle b)
+        {
+            // b doit déjà être normalisée (NormalizeInPlace)
+            var site = b.SiteCode;
+            var producer = b.Producer;
+            var name = b.Name;
+            var vintage = b.Vintage;
+            var supplier = b.Supplier;
+
+            // On cherche strictement (après normalisation)
+            return _db.Bottles.FirstOrDefault(x =>
+                x.SiteCode == site &&
+                x.Producer == producer &&
+                x.Name == name &&
+                x.Vintage == vintage &&
+                x.Supplier == supplier);
+        }
+
+        private static void MergeInto(Bottle target, Bottle incoming, bool addQuantity)
+        {
+            // On suppose incoming normalisée.
+            // Champs “identité” (clé) déjà identiques.
+
+            // Quantité
+            if (addQuantity)
+                target.Quantity += incoming.Quantity;
+            else
+                target.Quantity = incoming.Quantity;
+
+            // Mise à jour des infos si incoming apporte quelque chose
+            target.Color = incoming.Color ?? target.Color;
+            target.Appellation = incoming.Appellation ?? target.Appellation;
+            target.Country = incoming.Country ?? target.Country;
+            target.Region = incoming.Region ?? target.Region;
+            target.Grapes = incoming.Grapes ?? target.Grapes;
+
+            // Prix : si incoming non nul (et >0) alors on garde
+            if (incoming.PurchasePrice > 0) target.PurchasePrice = incoming.PurchasePrice;
+            if (incoming.SalePrice > 0) target.SalePrice = incoming.SalePrice;
+
+            // Seuil : si incoming >0, on garde
+            if (incoming.LowStockThreshold > 0) target.LowStockThreshold = incoming.LowStockThreshold;
+
+            // Notes : si incoming non vide, on remplace
+            if (!string.IsNullOrWhiteSpace(incoming.Notes)) target.Notes = incoming.Notes;
+
+            // RFID / last seen (optionnel)
+            target.RfidTagsSerialized = incoming.RfidTagsSerialized ?? target.RfidTagsSerialized;
+            target.LastSeenUtc = incoming.LastSeenUtc ?? target.LastSeenUtc;
+        }
 
         private static int ParseIntSafe(string? s, int def = 0)
-        {
-            if (int.TryParse((s ?? "").Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var i))
-                return i;
-
-            var cleaned = (s ?? "").Replace(" ", "");
-            return int.TryParse(cleaned, NumberStyles.Integer, CultureInfo.InvariantCulture, out i) ? i : def;
-        }
+            => int.TryParse((s ?? "").Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : def;
 
         private static decimal ParseMoney(string? s, decimal def = 0m)
         {
@@ -284,11 +333,12 @@ namespace MaCaveServeur.Services
                 .Replace("EUR", "", StringComparison.OrdinalIgnoreCase)
                 .Replace(" ", "");
 
-            // French style "12,90"
             txt = txt.Replace(",", ".");
 
-            return decimal.TryParse(txt, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
-                CultureInfo.InvariantCulture, out var d) ? d : def;
+            return decimal.TryParse(txt,
+                NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+                CultureInfo.InvariantCulture,
+                out var d) ? d : def;
         }
     }
 }

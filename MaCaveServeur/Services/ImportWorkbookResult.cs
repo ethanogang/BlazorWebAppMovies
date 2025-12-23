@@ -1,6 +1,6 @@
 namespace MaCaveServeur.Services;
 
-public record SheetImportInfo(string Sheet, string? Location, int Added);
+public record SheetImportInfo(string Sheet, string? SiteCode, int Added);
 
 public class ImportWorkbookResult
 {

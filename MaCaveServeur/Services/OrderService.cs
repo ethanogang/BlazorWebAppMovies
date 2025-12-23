@@ -95,7 +95,7 @@ namespace MaCaveServeur.Services
                 {
                     BottleId = b.Id,
                     Supplier = b.Supplier ?? "",
-                    Site = b.Location ?? "",
+                    Site = b.SiteCode ?? "",
                     Producer = b.Producer ?? "",
                     Name = b.Name ?? "",
                     Vintage = b.Vintage,

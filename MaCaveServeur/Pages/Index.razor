@@ -18,7 +18,7 @@
         var all = CellarSvc.GetAll() ?? new List<MaCaveServeur.Models.Bottle>();
         list = State.IsAll
             ? all
-            : all.Where(b => string.Equals(b.Location, State.CurrentSiteCode, StringComparison.OrdinalIgnoreCase)).ToList();
+            : all.Where(b => string.Equals(b.SiteCode, State.CurrentSiteCode, StringComparison.OrdinalIgnoreCase)).ToList();
 
         totalRefs = list.Count;
         totalQty = list.Sum(b => b.Quantity);

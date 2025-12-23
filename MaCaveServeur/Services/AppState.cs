@@ -18,31 +18,45 @@ namespace MaCaveServeur.Services
         }
 
         // --- Liste des établissements disponibles ---
-        // Ajoute/retire ici selon ton besoin.
+        // Codes "fixes" (ceux qui existent réellement).
+        private static readonly List<SiteOption> _fixedSites = new()
+        {
+            new SiteOption { Code = "BRUTUS",   Label = "Brutus"   },
+            new SiteOption { Code = "BACCHUS",  Label = "Bacchus"  },
+            new SiteOption { Code = "MAILLARD", Label = "Maillard" },
+            new SiteOption { Code = "GRAMMA",   Label = "Gramma"   },
+            new SiteOption { Code = "MERLOT",   Label = "Merlot"   },
+        };
+
+        // Inclut l'option "ALL" côté UI (jamais stockée dans les bouteilles)
         public List<SiteOption> AllSites { get; } = new()
         {
-            new SiteOption { Code = "ALL",     Label = "Groupe Amour (tous)" },
-            new SiteOption { Code = "BRUTUS",  Label = "Brutus" },
-            new SiteOption { Code = "GRAMMA",  Label = "Gramma" },
-            new SiteOption { Code = "BACCHUS", Label = "Bacchus" },
+            new SiteOption { Code = "ALL", Label = "Groupe Amour (tous)" },
         };
+
+        public AppState()
+        {
+            AllSites.AddRange(_fixedSites);
+        }
 
         // --- Site courant (code) ---
         public string CurrentSiteCode { get; private set; } = "ALL";
 
         // --- Nom lisible du site courant ---
         public string CurrentSiteName =>
-            AllSites.FirstOrDefault(s => s.Code == CurrentSiteCode)?.Label
+            AllSites.FirstOrDefault(s => s.Code.Equals(CurrentSiteCode, StringComparison.OrdinalIgnoreCase))?.Label
             ?? "Groupe Amour";
 
-        // --- Sélection d’un site ---
+        // --- Mode groupe ---
+        public bool IsAll => CurrentSiteCode.Equals("ALL", StringComparison.OrdinalIgnoreCase);
+
         public void SetSite(string code)
         {
             if (string.IsNullOrWhiteSpace(code)) return;
             if (!AllSites.Any(s => s.Code.Equals(code, StringComparison.OrdinalIgnoreCase)))
                 return;
 
-            CurrentSiteCode = code.ToUpperInvariant();
+            CurrentSiteCode = code.Trim().ToUpperInvariant();
             NotifyChanged();
         }
 
@@ -50,16 +64,13 @@ namespace MaCaveServeur.Services
         //                 ALIAS RÉTRO-COMPATIBILITÉ
         // ------------------------------------------------------------------
 
-        /// <summary>Ancien nom utilisé par certaines pages (équivaut à AllSites).</summary>
-        public IEnumerable<SiteOption> Sites => AllSites;
+        /// <summary>Ancien alias utilisé par certaines pages : CurrentSiteName.</summary>
+        public string CurrentSiteLabel => CurrentSiteName;
 
-        /// <summary>Ancien nom : code du site sélectionné (string).</summary>
+        /// <summary>Ancien alias utilisé par certaines pages : CurrentSiteCode.</summary>
         public string SelectedSite => CurrentSiteCode;
 
-        /// <summary>Ancien booléen : vrai si on est en vue agrégée.</summary>
-        public bool IsAll => string.Equals(CurrentSiteCode, "ALL", StringComparison.OrdinalIgnoreCase);
-
-        /// <summary>Ancien setter sous forme de propriété (certaines pages faisaient State.SelectedSite = …).</summary>
+        /// <summary>Ancien setter sous forme de propriété (certaines pages faisaient State.SelectedSiteCode = …).</summary>
         public string SelectedSiteCode
         {
             get => CurrentSiteCode;

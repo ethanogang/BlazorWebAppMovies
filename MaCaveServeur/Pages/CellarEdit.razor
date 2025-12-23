@@ -3,6 +3,7 @@
 @inject MaCaveServeur.Services.CellarService CellarSvc
 @inject MaCaveServeur.Services.SupplierService SupplierSvc
 @inject NavigationManager Nav
+@inject MaCaveServeur.Services.AppState State
 
 <h3>Modifier une bouteille</h3>
 
@@ -88,7 +89,13 @@ else
 
             <div class="col-md-4">
                 <label class="form-label">Établissement / Site</label>
-                <InputText class="form-control" @bind-Value="bottle.Location" />
+                <InputSelect class="form-select" @bind-Value="bottle.SiteCode">
+    @foreach (var s in State.AllSites.Where(s => s.Code != "ALL"))
+    {
+        <option value="@s.Code">@s.Label</option>
+    }
+</InputSelect>
+
             </div>
 
             <div class="col-md-12">

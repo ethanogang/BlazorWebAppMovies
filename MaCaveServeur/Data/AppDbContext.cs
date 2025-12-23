@@ -1,5 +1,4 @@
 using Microsoft.EntityFrameworkCore;
-using System.Text.Json;
 using MaCaveServeur.Models;
 
 namespace MaCaveServeur.Data
@@ -15,10 +14,10 @@ namespace MaCaveServeur.Data
         {
             base.OnModelCreating(modelBuilder);
 
-            // Bottles
             modelBuilder.Entity<Bottle>(e =>
             {
                 e.HasKey(x => x.Id);
+
                 e.Property(x => x.Name).HasMaxLength(256);
                 e.Property(x => x.Producer).HasMaxLength(256);
                 e.Property(x => x.Appellation).HasMaxLength(256);
@@ -26,14 +25,16 @@ namespace MaCaveServeur.Data
                 e.Property(x => x.Country).HasMaxLength(64);
                 e.Property(x => x.Supplier).HasMaxLength(256);
                 e.Property(x => x.Color).HasMaxLength(64);
-                e.Property(x => x.Location).HasMaxLength(128);
 
-                // Liste de tags RFID sérialisée en JSON dans une colonne texte (facultatif si RFID endormi)
-                e.Property<string?>("RfidTagsSerialized");
-                e.Ignore(b => b.RfidTags); // évite double mapping si tu ne l’utilises pas maintenant
+                e.Property(x => x.SiteCode).HasMaxLength(64);
+
+                e.Property(x => x.Notes).HasMaxLength(2000);
+                e.Property(x => x.RfidTagsSerialized).HasMaxLength(4000);
+
+                // Index “anti-doublons” (non-unique pour éviter blocage si DB contient déjà des doublons)
+                e.HasIndex(x => new { x.SiteCode, x.Producer, x.Name, x.Vintage, x.Supplier });
             });
 
-            // Suppliers
             modelBuilder.Entity<Supplier>(e =>
             {
                 e.HasKey(x => x.Id);

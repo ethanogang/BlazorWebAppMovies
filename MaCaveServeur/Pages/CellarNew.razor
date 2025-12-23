@@ -1,400 +1,209 @@
-@page "/wines/add"
-@page "/wines/edit/{WineId:guid}"
+@page "/cellar/new"
+@page "/cellar/new/{Id:guid}"
+
 @using MaCaveServeur.Models
 @using MaCaveServeur.Services
-@using System.ComponentModel.DataAnnotations
-@inject CellarService CellarService
-@inject NavigationManager Navigation
+@using Microsoft.AspNetCore.Components.Forms
 
-<PageTitle>@(IsEditMode ? "Modifier" : "Ajouter") un vin - Ma Cave</PageTitle>
+@inject CellarService CellarSvc
+@inject AppState State
+@inject NavigationManager Nav
 
-<div class="min-h-screen bg-gradient-dark p-4 md:p-6 lg:p-8">
-    <div class="max-w-4xl mx-auto">
-        
-        <!-- En-tête -->
-        <div class="glass-panel mb-8">
-            <div class="flex items-center gap-4">
-                <button class="btn-ghost text-white" @onclick="GoBack">
-                    ← Retour
-                </button>
-                <div class="flex-1">
-                    <h1 class="text-3xl font-bold text-white">
-                        @(IsEditMode ? "✏️ Modifier" : "➕ Ajouter") un vin
-                    </h1>
-                    <p class="text-gray-300 mt-1">
-                        @(IsEditMode ? "Modifiez les informations de votre vin" : "Ajoutez une nouvelle bouteille à votre cave")
-                    </p>
-                </div>
+<PageTitle>Ajouter / Éditer</PageTitle>
+
+<div class="max-w-4xl mx-auto">
+
+    <header class="glass-panel mb-6 p-6">
+        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-white">@Title</h1>
+                <p class="text-white/70">
+                    Site : <span class="font-semibold">@State.CurrentSiteName</span>
+                </p>
+            </div>
+            <div class="flex gap-3">
+                <button class="btn-secondary" @onclick="Back">Retour</button>
+                @if (IsEdit)
+                {
+                    <button class="btn-danger" @onclick="Delete">Supprimer</button>
+                }
             </div>
         </div>
+    </header>
 
-        <!-- Formulaire principal -->
-        <EditForm Model="@Wine" OnValidSubmit="HandleSubmit">
-            <DataAnnotationsValidator />
-            
-            <div class="space-y-6">
-                
-                <!-- Informations générales -->
-                <div class="main-panel">
-                    <h2 class="text-2xl font-bold text-slate-dark mb-6 flex items-center gap-2">
-                        📝 Informations générales
-                    </h2>
+    @if (!string.IsNullOrWhiteSpace(Alert))
+    {
+        <div class="glass-panel p-4 mb-6">
+            <div class="text-white">@Alert</div>
+        </div>
+    }
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        <!-- Nom du vin -->
-                        <div class="md:col-span-2">
-                            <label class="input-label">
-                                Nom du vin <span class="text-red-500">*</span>
-                            </label>
-                            <InputText 
-                                class="input-field" 
-                                @bind-Value="Wine.Name" 
-                                placeholder="Ex: Château Margaux, Clos de Vougeot..."
-                            />
-                            <ValidationMessage For="@(() => Wine.Name)" class="input-error" />
-                        </div>
+    <EditForm Model="Bottle" OnValidSubmit="Save">
+        <DataAnnotationsValidator />
 
-                        <!-- Producteur -->
-                        <div>
-                            <label class="input-label">
-                                Producteur / Domaine
-                            </label>
-                            <InputText 
-                                class="input-field" 
-                                @bind-Value="Wine.Producer" 
-                                placeholder="Ex: Domaine de la Romanée-Conti"
-                            />
-                        </div>
+        <div class="glass-panel p-6 space-y-5">
 
-                        <!-- Appellation -->
-                        <div>
-                            <label class="input-label">
-                                Appellation
-                            </label>
-                            <InputText 
-                                class="input-field" 
-                                @bind-Value="Wine.Appellation" 
-                                placeholder="Ex: AOC Pauillac"
-                            />
-                        </div>
-
-                        <!-- Région -->
-                        <div>
-                            <label class="input-label">
-                                Région <span class="text-red-500">*</span>
-                            </label>
-                            <InputSelect class="select-field" @bind-Value="Wine.Region">
-                                <option value="">-- Sélectionner --</option>
-                                <option value="Bordeaux">🍷 Bordeaux</option>
-                                <option value="Bourgogne">🍇 Bourgogne</option>
-                                <option value="Champagne">🍾 Champagne</option>
-                                <option value="Vallée du Rhône">🌄 Vallée du Rhône</option>
-                                <option value="Loire">🌊 Loire</option>
-                                <option value="Alsace">🏔️ Alsace</option>
-                                <option value="Provence">☀️ Provence</option>
-                                <option value="Languedoc-Roussillon">🌅 Languedoc-Roussillon</option>
-                                <option value="Italie">🇮🇹 Italie</option>
-                                <option value="Espagne">🇪🇸 Espagne</option>
-                                <option value="Autre">🌍 Autre</option>
-                            </InputSelect>
-                            <ValidationMessage For="@(() => Wine.Region)" class="input-error" />
-                        </div>
-
-                        <!-- Type de vin -->
-                        <div>
-                            <label class="input-label">
-                                Type <span class="text-red-500">*</span>
-                            </label>
-                            <InputSelect class="select-field" @bind-Value="Wine.Type">
-                                <option value="">-- Sélectionner --</option>
-                                <option value="Rouge">🍷 Rouge</option>
-                                <option value="Blanc">🥂 Blanc</option>
-                                <option value="Rosé">🌸 Rosé</option>
-                                <option value="Champagne">🍾 Champagne/Effervescent</option>
-                                <option value="Doux">🍯 Vin doux/Liquoreux</option>
-                            </InputSelect>
-                            <ValidationMessage For="@(() => Wine.Type)" class="input-error" />
-                        </div>
-
-                        <!-- Millésime -->
-                        <div>
-                            <label class="input-label">
-                                Millésime <span class="text-red-500">*</span>
-                            </label>
-                            <InputNumber 
-                                class="input-field" 
-                                @bind-Value="Wine.Year" 
-                                placeholder="@DateTime.Now.Year"
-                            />
-                            <ValidationMessage For="@(() => Wine.Year)" class="input-error" />
-                        </div>
-
-                        <!-- Cépage -->
-                        <div>
-                            <label class="input-label">
-                                Cépage(s)
-                            </label>
-                            <InputText 
-                                class="input-field" 
-                                @bind-Value="Wine.Grape" 
-                                placeholder="Ex: Cabernet Sauvignon, Merlot"
-                            />
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Stock et prix -->
-                <div class="main-panel">
-                    <h2 class="text-2xl font-bold text-slate-dark mb-6 flex items-center gap-2">
-                        💰 Stock et tarification
-                    </h2>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        <!-- Quantité -->
-                        <div>
-                            <label class="input-label">
-                                Quantité <span class="text-red-500">*</span>
-                            </label>
-                            <InputNumber 
-                                class="input-field" 
-                                @bind-Value="Wine.Quantity" 
-                                placeholder="0"
-                            />
-                            <ValidationMessage For="@(() => Wine.Quantity)" class="input-error" />
-                            @if (Wine.Quantity <= 3 && Wine.Quantity > 0)
-                            {
-                                <p class="text-amber-600 text-sm mt-1 flex items-center gap-1">
-                                    ⚠️ Stock faible
-                                </p>
-                            }
-                        </div>
-
-                        <!-- Prix d'achat -->
-                        <div>
-                            <label class="input-label">
-                                Prix d'achat (€) <span class="text-red-500">*</span>
-                            </label>
-                            <InputNumber 
-                                class="input-field" 
-                                @bind-Value="Wine.PurchasePrice" 
-                                placeholder="0.00"
-                            />
-                            <ValidationMessage For="@(() => Wine.PurchasePrice)" class="input-error" />
-                        </div>
-
-                    </div>
-
-                    <!-- Valeur totale calculée -->
-                    @if (Wine.Quantity > 0 && Wine.PurchasePrice > 0)
-                    {
-                        <div class="mt-6 p-4 bg-gradient-gold rounded-xl">
-                            <div class="flex items-center justify-between">
-                                <span class="font-semibold text-slate-dark">Valeur totale du stock:</span>
-                                <span class="text-2xl font-bold text-slate-dark">
-                                    @((Wine.PurchasePrice * Wine.Quantity).ToString("C"))
-                                </span>
-                            </div>
-                        </div>
-                    }
-                </div>
-
-                <!-- Détails de conservation -->
-                <div class="main-panel">
-                    <h2 class="text-2xl font-bold text-slate-dark mb-6 flex items-center gap-2">
-                        🍾 Conservation et dégustation
-                    </h2>
-
-                    <div class="grid grid-cols-1 gap-6">
-                        
-                        <!-- Notes de dégustation -->
-                        <div>
-                            <label class="input-label">
-                                Notes de dégustation
-                            </label>
-                            <InputTextArea 
-                                class="textarea-field" 
-                                @bind-Value="Wine.Notes" 
-                                placeholder="Arômes, saveurs, accords mets-vins..."
-                            />
-                        </div>
-
-                    </div>
-                </div>
-
-                <!-- Boutons d'action -->
-                <div class="main-panel">
-                    <div class="flex flex-col md:flex-row gap-4">
-                        <button type="submit" class="btn-primary flex-1" disabled="@IsSubmitting">
-                            @if (IsSubmitting)
-                            {
-                                <span class="flex items-center justify-center gap-2">
-                                    <span class="loading-spinner"></span>
-                                    Enregistrement...
-                                </span>
-                            }
-                            else
-                            {
-                                <span>@(IsEditMode ? "💾 Enregistrer les modifications" : "➕ Ajouter à la cave")</span>
-                            }
-                        </button>
-                        <button type="button" class="btn-secondary md:w-auto" @onclick="GoBack">
-                            Annuler
-                        </button>
-                        @if (IsEditMode)
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label">Établissement</label>
+                    <InputSelect class="select" @bind-Value="Bottle.SiteCode">
+                        @foreach (var s in State.AllSites.Where(s => s.Code != "ALL"))
                         {
-                            <button type="button" class="btn-danger md:w-auto" @onclick="DeleteWine">
-                                🗑️ Supprimer
-                            </button>
+                            <option value="@s.Code">@s.Label</option>
                         }
-                    </div>
+                    </InputSelect>
                 </div>
 
+                <div>
+                    <label class="label">Couleur / Type</label>
+                    <InputText class="input" @bind-Value="Bottle.Color" placeholder="RED-WINE / WHITE-WINE / ..." />
+                </div>
             </div>
-        </EditForm>
 
-        <!-- Message de succès -->
-        @if (ShowSuccessMessage)
-        {
-            <div class="fixed bottom-8 right-8 alert-success shadow-2xl animate-pulse z-50">
-                <p class="font-semibold">✓ Vin @(IsEditMode ? "modifié" : "ajouté") avec succès !</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label">Producteur</label>
+                    <InputText class="input" @bind-Value="Bottle.Producer" />
+                </div>
+                <div>
+                    <label class="label">Nom</label>
+                    <InputText class="input" @bind-Value="Bottle.Name" />
+                </div>
             </div>
-        }
 
-    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label">Région</label>
+                    <InputText class="input" @bind-Value="Bottle.Region" />
+                </div>
+                <div>
+                    <label class="label">Appellation</label>
+                    <InputText class="input" @bind-Value="Bottle.Appellation" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="label">Millésime</label>
+                    <InputNumber class="input" @bind-Value="Bottle.Vintage" />
+                </div>
+                <div>
+                    <label class="label">Quantité</label>
+                    <InputNumber class="input" @bind-Value="Bottle.Quantity" />
+                </div>
+                <div>
+                    <label class="label">Seuil alerte</label>
+                    <InputNumber class="input" @bind-Value="Bottle.LowStockThreshold" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label">Fournisseur</label>
+                    <InputText class="input" @bind-Value="Bottle.Supplier" />
+                </div>
+                <div>
+                    <label class="label">Cépages</label>
+                    <InputText class="input" @bind-Value="Bottle.Grapes" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="label">Prix achat</label>
+                    <InputNumber class="input" @bind-Value="Bottle.PurchasePrice" />
+                </div>
+                <div>
+                    <label class="label">Prix vente</label>
+                    <InputNumber class="input" @bind-Value="Bottle.SalePrice" />
+                </div>
+            </div>
+
+            <div>
+                <label class="label">Notes</label>
+                <InputTextArea class="textarea" rows="4" @bind-Value="Bottle.Notes" />
+            </div>
+
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="btn-primary">Enregistrer</button>
+                <button type="button" class="btn-secondary" @onclick="Back">Annuler</button>
+            </div>
+        </div>
+    </EditForm>
 </div>
 
 @code {
-    [Parameter]
-    public Guid? WineId { get; set; }
+    [Parameter] public Guid? Id { get; set; }
 
-    private WineFormModel Wine { get; set; } = new();
-    private bool IsEditMode => WineId.HasValue;
-    private bool IsSubmitting { get; set; }
-    private bool ShowSuccessMessage { get; set; }
+    private Bottle Bottle { get; set; } = new Bottle();
+    private string? Alert;
+
+    private bool IsEdit => Id.HasValue && Id.Value != Guid.Empty;
+    private string Title => IsEdit ? "✏️ Éditer une bouteille" : "➕ Ajouter une bouteille";
 
     protected override void OnInitialized()
     {
-        if (IsEditMode)
+        if (!IsEdit)
         {
-            var existingWine = CellarService.GetWine(WineId.Value);
-            if (existingWine != null)
-            {
-                Wine = MapToFormModel(existingWine);
-            }
-            else
-            {
-                Navigation.NavigateTo("/cellar");
-            }
+            Bottle.Id = Guid.NewGuid();
+            Bottle.SiteCode = State.IsAll ? "BRUTUS" : State.CurrentSiteCode;
+            Bottle.LowStockThreshold = 3;
+            Bottle.Quantity = 0;
+            Bottle.Vintage = 0;
+            return;
         }
+
+        var b = CellarSvc.GetWine(Id!.Value);
+        if (b == null)
+        {
+            Alert = "Bouteille introuvable.";
+            Bottle = new Bottle { Id = Id!.Value };
+            return;
+        }
+
+        Bottle = b;
+
+        if (string.IsNullOrWhiteSpace(Bottle.SiteCode))
+            Bottle.SiteCode = State.IsAll ? "BRUTUS" : State.CurrentSiteCode;
     }
 
-    private async Task HandleSubmit()
+    private void Save()
     {
-        IsSubmitting = true;
+        Alert = null;
+
+        Bottle.SiteCode = (Bottle.SiteCode ?? "").Trim().ToUpperInvariant();
+        Bottle.Name = (Bottle.Name ?? "").Trim();
+        Bottle.Producer = (Bottle.Producer ?? "").Trim();
 
         try
         {
-            var wineBottle = MapToWineBottle(Wine);
-            
-            if (IsEditMode)
-            {
-                CellarService.UpdateWine(wineBottle);
-            }
+            if (IsEdit)
+                CellarSvc.UpdateWine(Bottle);
             else
-            {
-                CellarService.AddWine(wineBottle);
-            }
+                CellarSvc.AddWine(Bottle);
 
-            ShowSuccessMessage = true;
-            await Task.Delay(1500);
-            Navigation.NavigateTo("/cellar");
+            Nav.NavigateTo("/cellar");
         }
-        finally
+        catch (Exception ex)
         {
-            IsSubmitting = false;
+            Alert = $"Erreur : {ex.Message}";
         }
     }
 
-    private void GoBack()
+    private void Delete()
     {
-        Navigation.NavigateTo("/cellar");
-    }
+        if (!IsEdit) return;
 
-    private void DeleteWine()
-    {
-        // TODO: Implémenter une vraie modal de confirmation
-        CellarService.DeleteWine(WineId.Value);
-        Navigation.NavigateTo("/cellar");
-    }
-
-    // Mapping helpers
-    private WineFormModel MapToFormModel(WineBottle wine)
-    {
-        return new WineFormModel
+        try
         {
-            Name = wine.Name,
-            Producer = wine.Producer,
-            Region = wine.Region,
-            Type = wine.Type,
-            Year = wine.Year,
-            Quantity = wine.Quantity,
-            PurchasePrice = wine.PurchasePrice,
-            Notes = wine.Notes,
-            Appellation = wine.Appellation ?? string.Empty,
-            Grape = wine.Grape ?? string.Empty
-        };
+            CellarSvc.DeleteWine(Id!.Value);
+            Nav.NavigateTo("/cellar");
+        }
+        catch (Exception ex)
+        {
+            Alert = $"Erreur suppression : {ex.Message}";
+        }
     }
 
-    private WineBottle MapToWineBottle(WineFormModel model)
-    {
-        var wine = IsEditMode ? CellarService.GetWine(WineId.Value) : new WineBottle();
-        
-        wine.Name = model.Name;
-        wine.Producer = model.Producer;
-        wine.Region = model.Region;
-        wine.Type = model.Type;
-        wine.Year = model.Year;
-        wine.Quantity = model.Quantity;
-        wine.PurchasePrice = model.PurchasePrice;
-        wine.Notes = model.Notes;
-        wine.Appellation = model.Appellation;
-        wine.Grape = model.Grape;
-        
-        return wine;
-    }
-
-    // Modèle de formulaire
-    public class WineFormModel
-    {
-        [Required(ErrorMessage = "Le nom est requis")]
-        public string Name { get; set; } = string.Empty;
-
-        public string Producer { get; set; } = string.Empty;
-        public string Appellation { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "La région est requise")]
-        public string Region { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Le type est requis")]
-        public string Type { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "Le millésime est requis")]
-        [System.ComponentModel.DataAnnotations.Range(1900, 2100, ErrorMessage = "Millésime invalide")]
-        public int Year { get; set; }
-
-        public string Grape { get; set; } = string.Empty;
-
-        [Required(ErrorMessage = "La quantité est requise")]
-        [System.ComponentModel.DataAnnotations.Range(0, int.MaxValue, ErrorMessage = "La quantité doit être positive")]
-        public int Quantity { get; set; }
-
-        [Required(ErrorMessage = "Le prix est requis")]
-        [System.ComponentModel.DataAnnotations.Range(0, double.MaxValue, ErrorMessage = "Le prix doit être positif")]
-        public decimal PurchasePrice { get; set; }
-
-        public string Notes { get; set; } = string.Empty;
-    }
+    private void Back() => Nav.NavigateTo("/cellar");
 }

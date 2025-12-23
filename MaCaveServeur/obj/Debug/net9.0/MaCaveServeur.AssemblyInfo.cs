@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MaCaveServeur")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4e826a54e01f826e7d5450217630453976519c5a")]
 [assembly: System.Reflection.AssemblyProductAttribute("MaCaveServeur")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MaCaveServeur")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
