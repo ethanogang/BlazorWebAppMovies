@@ -145,7 +145,6 @@ C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\rjsmcshtml.dswa.cache.json
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\scopedcss\Shared\MainLayout.razor.rz.scp.css
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\scopedcss\bundle\MaCaveServeur.styles.css
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\scopedcss\projectbundle\MaCaveServeur.bundle.scp.css
-C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\compressed\m6xnbiw9w3-n29m25isvp.gz
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\compressed\bk1ujn3bff-cmapd0fi15.gz
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\compressed\u6kbe2un22-wk8x8xm0ah.gz
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\compressed\7txyyflenh-sjnzgf7e1h.gz
@@ -172,3 +171,4 @@ C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\refint\MaCaveServeur.dll
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.pdb
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\MaCaveServeur.genruntimeconfig.cache
 C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\ref\MaCaveServeur.dll
+C:\BlazorWebAppMovies\MaCaveServeur\obj\Debug\net9.0\compressed\m6xnbiw9w3-i4r2lktxwk.gz

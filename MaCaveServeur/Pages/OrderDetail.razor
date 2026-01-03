@@ -1,59 +1,122 @@
 @page "/orders/detail/{supplier}"
 @using MaCaveServeur.Services
 @inject OrderService Orders
+@inject NavigationManager Nav
 
-<h1>🧾 Commande : @(_supplier ?? "—")</h1>
+  <div class="page-header">
+    <div class="page-eyebrow">Commandes</div>
+    <div class="page-title">Commande : @(_supplier ?? "-")</div>
+    <div class="page-sub">Details fournisseur</div>
+  </div>
+
+  @if (_order != null)
+  {
+    <div class="kpi-grid mt-8">
+      <div class="kpi-card">
+        <div class="kpi-label">Lignes</div>
+        <div class="kpi-value">@_order.Lines.Count</div>
+        <div class="kpi-meta">a commander</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Total</div>
+        <div class="kpi-value">@TotalOrderAmount.ToString("0.00")</div>
+        <div class="kpi-meta">EUR</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Contact</div>
+        <div class="kpi-value">@(_order.ContactName ?? "-")</div>
+        <div class="kpi-meta">fournisseur</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Email</div>
+        <div class="kpi-value">@(_order.OrderEmail ?? "-")</div>
+        <div class="kpi-meta">commande</div>
+      </div>
+    </div>
+  }
 
 @if (_order == null)
 {
-  <div class="card">Chargement…</div>
+  <div class="panel mt-6">Chargement...</div>
 }
 else if (_order.Lines.Count == 0)
 {
-  <div class="card">Aucune ligne à commander pour ce fournisseur.</div>
+  <div class="panel mt-6">Aucune ligne a commander pour ce fournisseur.</div>
 }
 else
 {
-  <div class="card">
+  <div class="panel mt-6 space-y-2">
     <div><b>Fournisseur :</b> @_order.SupplierName</div>
     <div><b>Contact :</b> @_order.ContactName</div>
     <div><b>Email commande :</b> @_order.OrderEmail</div>
-    <div><b>Téléphone :</b> @_order.Phone</div>
+    <div><b>Telephone :</b> @_order.Phone</div>
   </div>
 
-  <div class="card">
-    <table class="pure-table pure-table-striped" style="width:100%;">
-      <thead>
-        <tr>
-          <th>Site</th>
-          <th>Producteur</th>
-          <th>Nom</th>
-          <th>Millésime</th>
-          <th>Qté</th>
-          <th>Prix achat</th>
-          <th>Total</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach (var l in _order.Lines.OrderBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
-        {
+  <div class="panel mt-6">
+    <div class="table-wrap">
+      <table class="table">
+        <thead class="thead">
           <tr>
-            <td>@l.Site</td>
-            <td>@l.Producer</td>
-            <td>@l.Name</td>
-            <td>@(l.Vintage==0?"—":l.Vintage)</td>
-            <td>@l.Quantity</td>
-            <td>@l.PurchasePrice.ToString("0.00") €</td>
-            <td>@( (l.PurchasePrice * l.Quantity).ToString("0.00") ) €</td>
+            <th>Site</th>
+            <th>Producteur</th>
+            <th>Nom</th>
+            <th>Millesime</th>
+            <th>Qte</th>
+            <th>Prix achat</th>
+            <th>Total</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @foreach (var l in _order.Lines.OrderBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
+          {
+            <tr class="trow">
+              <td>@l.Site</td>
+              <td>@l.Producer</td>
+              <td>@l.Name</td>
+              <td>@(l.Vintage == 0 ? "-" : l.Vintage)</td>
+              <td>@l.Quantity</td>
+              <td>@l.PurchasePrice.ToString("0.00") EUR</td>
+              <td>@((l.PurchasePrice * l.Quantity).ToString("0.00")) EUR</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="card">
-    <button class="btn" @onclick="DownloadExcel">Exporter en Excel</button>
+  <div class="panel mt-6 space-y-4">
+    <div class="card__title">Email commande</div>
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div>
+        <label class="label">A</label>
+        <div class="text-black">@string.Join("; ", _emailTo)</div>
+      </div>
+      <div>
+        <label class="label">Objet</label>
+        <div class="text-black">@_emailSubject</div>
+      </div>
+    </div>
+
+    <div>
+      <label class="label">Message</label>
+      <textarea class="textarea" rows="14" readonly>@_emailBody</textarea>
+    </div>
+
+    <div class="flex flex-wrap gap-3">
+      @if (_emailTo.Count > 0)
+      {
+        <a class="btn-primary" href="@MailToLink">Ouvrir le mail</a>
+      }
+      else
+      {
+        <span class="chip">Email fournisseur manquant</span>
+      }
+      <button class="btn-secondary" @onclick="CopySubject">Copier l'objet</button>
+      <button class="btn-secondary" @onclick="CopyBody">Copier le message</button>
+      <button class="btn-secondary" @onclick="DownloadExcel">Exporter en Excel</button>
+    </div>
   </div>
+
 }
 
 @code {
@@ -61,6 +124,12 @@ else
 
   private string? _supplier;
   private OrderService.Order? _order;
+  private string? _emailSubject;
+  private string? _emailBody;
+  private List<string> _emailTo = new();
+
+  private decimal TotalOrderAmount =>
+    _order?.Lines.Sum(l => l.PurchasePrice * l.Quantity) ?? 0m;
 
   protected override void OnParametersSet()
   {
@@ -71,15 +140,30 @@ else
       return;
     }
 
-    // Reconstruire l'ordre pour ce fournisseur
     var shortages = Orders.GetShortages()
       .Where(s => string.Equals(s.Supplier, _supplier, StringComparison.OrdinalIgnoreCase))
       .ToList();
 
     _order = Orders.BuildOrderFromShortages(shortages);
+    var email = Orders.PrepareEmail(_order);
+    _emailSubject = email.subject;
+    _emailBody = email.body;
+    _emailTo = email.to;
   }
 
   [Inject] IJSRuntime JS { get; set; } = default!;
+
+  private async Task CopySubject()
+  {
+    if (string.IsNullOrWhiteSpace(_emailSubject)) return;
+    await JS.InvokeVoidAsync("copyText", _emailSubject);
+  }
+
+  private async Task CopyBody()
+  {
+    if (string.IsNullOrWhiteSpace(_emailBody)) return;
+    await JS.InvokeVoidAsync("copyText", _emailBody);
+  }
 
   private async Task DownloadExcel()
   {
@@ -88,5 +172,16 @@ else
     var base64 = Convert.ToBase64String(bytes);
     var fileName = $"Commande_{_supplier}_{DateTime.Now:yyyyMMdd}.xlsx";
     await JS.InvokeVoidAsync("saveFile", fileName, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", base64);
+  }
+
+  private string MailToLink
+  {
+    get
+    {
+      var to = string.Join(";", _emailTo ?? new List<string>());
+      var subject = Uri.EscapeDataString(_emailSubject ?? string.Empty);
+      var body = Uri.EscapeDataString(_emailBody ?? string.Empty);
+      return $"mailto:{to}?subject={subject}&body={body}";
+    }
   }
 }

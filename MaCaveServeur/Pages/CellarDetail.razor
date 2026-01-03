@@ -1,0 +1,154 @@
+@page "/cellar/detail/{Id:guid}"
+@using MaCaveServeur.Models
+@using MaCaveServeur.Services
+
+@inject CellarService CellarSvc
+@inject MovementLogService LogSvc
+@inject NavigationManager Nav
+
+<PageTitle>Fiche bouteille</PageTitle>
+
+@if (bottle == null)
+{
+    <div class="panel">Bouteille introuvable.</div>
+}
+else
+{
+    <div class="page-header">
+        <div class="page-eyebrow">Bouteille</div>
+        <div class="page-title">Fiche bouteille</div>
+        <div class="page-sub">@bottle.Name</div>
+    </div>
+
+    <div class="kpi-grid mt-8">
+        <div class="kpi-card">
+            <div class="kpi-label">Stock</div>
+            <div class="kpi-value">@bottle.Quantity</div>
+            <div class="kpi-meta">bouteilles</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Seuil</div>
+            <div class="kpi-value">@bottle.LowStockThreshold</div>
+            <div class="kpi-meta">alerte</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Prix achat</div>
+            <div class="kpi-value">@bottle.PurchasePrice</div>
+            <div class="kpi-meta">EUR</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Prix vente</div>
+            <div class="kpi-value">@bottle.SalePrice</div>
+            <div class="kpi-meta">EUR</div>
+        </div>
+    </div>
+
+    <div class="flex gap-3 mt-4">
+        <button class="btn-secondary" @onclick="Back">Retour</button>
+        <button class="btn-secondary" @onclick="Edit">Editer</button>
+        <button class="btn-secondary" @onclick="Transfer">Transferer</button>
+    </div>
+
+        <div class="row mt-6">
+            <div class="panel">
+                <div class="card__title">Details</div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                    <div class="text-white/60 text-sm">Code produit</div>
+                    <div class="text-white">@bottle.ProductReferenceCode</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Designation</div>
+                    <div class="text-white">@bottle.Designation</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Producteur</div>
+                    <div class="text-white">@bottle.Producer</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Appellation</div>
+                    <div class="text-white">@bottle.Appellation</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Region</div>
+                    <div class="text-white">@bottle.Region</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Pays</div>
+                    <div class="text-white">@bottle.Country</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Fournisseur</div>
+                    <div class="text-white">@bottle.Supplier</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Cepages</div>
+                    <div class="text-white">@bottle.Grapes</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Millesime</div>
+                    <div class="text-white">@((bottle.Vintage > 0) ? bottle.Vintage.ToString() : "-")</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Contenance (ml)</div>
+                    <div class="text-white">@((bottle.Capacity > 0) ? bottle.Capacity.ToString() : "-")</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Stock</div>
+                    <div class="text-white">@bottle.Quantity</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">Prix verre</div>
+                    <div class="text-white">@bottle.GlassSellPrice</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">ID externe</div>
+                    <div class="text-white">@bottle.ExternalId</div>
+                </div>
+                <div>
+                    <div class="text-white/60 text-sm">ID verre</div>
+                    <div class="text-white">@bottle.GlassExternalId</div>
+                </div>
+            </div>
+        </div>
+        <div class="panel">
+            <div class="card__title">Historique (session)</div>
+            @if (movements.Count == 0)
+            {
+                <div class="chart-empty">Aucun mouvement</div>
+            }
+            else
+            {
+                <div class="space-y-2 mt-4">
+                    @foreach (var m in movements)
+                    {
+                        <div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                            <div>
+                                <div class="font-semibold text-white">@m.Action</div>
+                                <div class="text-white/60 text-sm">@m.Note</div>
+                            </div>
+                            <div class="text-white/80 text-sm">@m.Quantity</div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private Bottle? bottle;
+    private List<MovementLogService.MovementEntry> movements = new();
+
+    protected override void OnInitialized()
+    {
+        bottle = CellarSvc.GetWine(Id);
+        movements = LogSvc.GetForBottle(Id).ToList();
+    }
+
+    private void Back() => Nav.NavigateTo("/cellar");
+    private void Edit() => Nav.NavigateTo($"/cellar/edit/{Id}");
+    private void Transfer() => Nav.NavigateTo($"/transfer/{Id}");
+}

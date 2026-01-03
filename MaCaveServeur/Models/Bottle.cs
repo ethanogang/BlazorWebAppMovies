@@ -9,8 +9,10 @@ namespace MaCaveServeur.Models
         public Guid Id { get; set; }
 
         // --- Champs "nouveaux" (cible) ---
+        [MaxLength(128)] public string? ProductReferenceCode { get; set; }
         [MaxLength(256)] public string? Color { get; set; }          // ex: RED-WINE / WHITE-WINE / ...
         [MaxLength(256)] public string? Name { get; set; }           // nom de la cuvée
+        [MaxLength(256)] public string? Designation { get; set; }
         [MaxLength(256)] public string? Appellation { get; set; }
         [MaxLength(256)] public string? Producer { get; set; }       // Domaine / Château
         [MaxLength(128)] public string? Country { get; set; }
@@ -18,8 +20,10 @@ namespace MaCaveServeur.Models
         [MaxLength(256)] public string? Grapes { get; set; }         // cépages
         [MaxLength(256)] public string? Supplier { get; set; }
         public int Vintage { get; set; }                             // millésime
+        public int Capacity { get; set; }                            // ml
         public decimal PurchasePrice { get; set; }
         public decimal SalePrice { get; set; }
+        public decimal GlassSellPrice { get; set; }
 
         public int Quantity { get; set; }
         public int LowStockThreshold { get; set; }
@@ -28,6 +32,8 @@ namespace MaCaveServeur.Models
         [MaxLength(64)] public string? SiteCode { get; set; }
 
         [MaxLength(2000)] public string? Notes { get; set; }
+        [MaxLength(128)] public string? ExternalId { get; set; }
+        [MaxLength(128)] public string? GlassExternalId { get; set; }
 
         // --- RFID (optionnel) ---
         [MaxLength(4000)]

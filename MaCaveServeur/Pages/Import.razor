@@ -1,44 +1,74 @@
 @page "/import"
 @using Microsoft.AspNetCore.Components.Forms
 @inject MaCaveServeur.Services.CellarService CellarSvc
+@inject MaCaveServeur.Services.AppState State
 
-<h1 class="text-2xl font-semibold mb-4">📥 Importer (Excel .xlsx)</h1>
-
-<div class="flex items-center gap-4 mb-4">
-    <label class="font-medium">Établissement :</label>
-    <select class="border rounded px-2 py-1" @bind="SelectedSite">
-        @foreach (var s in AllSites)
-        {
-            <option value="@s">@s</option>
-        }
-    </select>
+<div class="page-header">
+    <div class="page-eyebrow">Import</div>
+    <div class="page-title">Importer (Excel .xlsx)</div>
+    <div class="page-sub">Import cave standard ou inventaire par etablissement.</div>
 </div>
 
-<div class="rounded border p-4 bg-white/40 dark:bg-white/5 max-w-3xl">
-    <p class="mb-2">
-        Feuille attendue avec en-têtes (ligne 1) :
-        <code>COULEUR</code>, <code>NOM</code>, <code>APPELLATION</code> (ou <code>APPELATION</code>), 
-        <code>PRODUCTEUR</code>, <code>PAYS</code>, <code>REGION</code>, <code>FOURNISSEUR</code>, 
-        <code>MILLESIME</code>, <code>CEPAGES</code>, <code>PRIX ACHAT</code>, 
-        <code>PRIX VENTE</code>, <code>SEUIL ALERTE</code>, <code>QUANTITE</code>.
-    </p>
+<div class="kpi-grid mt-8">
+    <div class="kpi-card">
+        <div class="kpi-label">Etablissements</div>
+        <div class="kpi-value">@State.AllSites.Count(s => s.Code != "ALL")</div>
+        <div class="kpi-meta">actifs</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Format</div>
+        <div class="kpi-value">XLSX</div>
+        <div class="kpi-meta">fichier</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Mode</div>
+        <div class="kpi-value">Cave</div>
+        <div class="kpi-meta">ou inventaire</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Selection</div>
+        <div class="kpi-value">@SelectedSiteCode</div>
+        <div class="kpi-meta">etablissement</div>
+    </div>
+</div>
+
+<div class="panel mt-6 space-y-4">
+    <div class="flex items-center gap-4">
+        <label class="label">Etablissement</label>
+        <select class="select max-w-xs" @bind="SelectedSiteCode">
+            @foreach (var s in State.AllSites.Where(s => s.Code != "ALL"))
+            {
+                <option value="@s.Code">@s.Label</option>
+            }
+        </select>
+    </div>
+
+    <div class="text-white/70 text-sm">
+        Format cave: <code>COULEUR</code>, <code>NOM</code>, <code>APPELLATION</code>, <code>PRODUCTEUR</code>,
+        <code>PAYS</code>, <code>REGION</code>, <code>FOURNISSEUR</code>, <code>MILLESIME</code>,
+        <code>CEPAGES</code>, <code>PRIX ACHAT</code>, <code>PRIX VENTE</code>, <code>SEUIL ALERTE</code>, <code>QUANTITE</code>.
+        <br />
+        Format inventaire: colonnes type <code>ProductTypeCode</code>, <code>Name</code>, <code>Winery</code> + une colonne <code>CAVE XXXX</code>.
+    </div>
 
     <InputFile OnChange="OnFile" accept=".xlsx" />
 
     @if (!string.IsNullOrWhiteSpace(Message))
     {
-        <div class="mt-3 text-sm">@((MarkupString)Message)</div>
+        <div class="text-sm">@((MarkupString)Message)</div>
     }
 </div>
 
 @code {
-    string SelectedSite = "Groupe Amour";
-    readonly string[] AllSites = new[]
-    {
-        "Groupe Amour", "Brutus", "Maillard", "Merlot", "Bacchus", "Gramma", "Bistrot Maurice"
-    };
-
+    string SelectedSiteCode = "MERLOT";
     string? Message;
+
+    protected override void OnInitialized()
+    {
+        SelectedSiteCode = State.IsAll
+            ? State.AllSites.FirstOrDefault(s => s.Code != "ALL")?.Code ?? "MERLOT"
+            : State.CurrentSiteCode;
+    }
 
     async Task OnFile(InputFileChangeEventArgs e)
     {
@@ -53,12 +83,12 @@
             await fs.CopyToAsync(ms);
             ms.Position = 0;
 
-            var count = CellarSvc.ImportExcel(ms, SelectedSite);
-            Message = $"✅ Import terminé. <b>{count}</b> lignes intégrées pour <b>{SelectedSite}</b>.";
+            var count = CellarSvc.ImportExcel(ms, SelectedSiteCode);
+            Message = $"Import termine. <b>{count}</b> lignes integrees pour <b>{SelectedSiteCode}</b>.";
         }
         catch (Exception ex)
         {
-            Message = $"❌ Erreur import : {ex.Message}";
+            Message = $"Erreur import : {ex.Message}";
         }
         StateHasChanged();
     }

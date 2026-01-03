@@ -3,67 +3,124 @@
 @inject OrderService OrderSvc
 @inject IJSRuntime JS
 
-<h1>🧾 Commandes groupées par fournisseur</h1>
+<div class="page-header">
+  <div class="page-eyebrow">Gestion</div>
+  <div class="page-title">Commandes groupees par fournisseur</div>
+  <div class="page-sub">Genere un classeur Excel par fournisseur ou un ZIP global.</div>
+</div>
 
-<div class="card">
-  <p>Génère un classeur Excel par fournisseur (à partir des pénuries) ou un ZIP contenant tous les fournisseurs.</p>
+<div class="kpi-grid mt-8">
+  <div class="kpi-card">
+    <div class="kpi-label">Fournisseurs</div>
+    <div class="kpi-value">@TotalSuppliers</div>
+    <div class="kpi-meta">concernes</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Lignes</div>
+    <div class="kpi-value">@TotalLines</div>
+    <div class="kpi-meta">a exporter</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">ZIP</div>
+    <div class="kpi-value">1</div>
+    <div class="kpi-meta">global</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Excel</div>
+    <div class="kpi-value">@TotalSuppliers</div>
+    <div class="kpi-meta">fichiers</div>
+  </div>
 </div>
 
 @if (_rows == null)
 {
-  <div class="card">Analyse des pénuries…</div>
+  <div class="panel mt-6">Analyse des penuries...</div>
 }
 else if (_rows.Count == 0)
 {
-  <div class="card">Aucune pénurie détectée ✅</div>
+  <div class="panel mt-6">Aucune penurie detectee.</div>
 }
 else
 {
-  <div class="card">
-    <button class="btn primary" @onclick="DownloadAllZip">Télécharger tout (ZIP)</button>
-  </div>
+  <div class="row mt-6">
+    <div class="panel space-y-3">
+      <div class="card__title">Export global</div>
+      <button class="btn-primary" @onclick="DownloadAllZip">Telecharger tout (ZIP)</button>
+    </div>
 
-  <div class="card">
-    <h3>Par fournisseur</h3>
-    @foreach (var g in _rows.GroupBy(r => r.Supplier).OrderBy(g => g.Key))
-    {
-      <div style="display:flex; align-items:center; justify-content:space-between; border:1px solid var(--border); border-radius:12px; padding:10px 12px; margin-bottom:8px; background:var(--panel);">
-        <div>
-          <div style="font-weight:600;">@g.Key</div>
-          <div style="color:var(--muted); font-size:.9rem">@g.Count() ligne(s)</div>
+    <div class="panel space-y-3">
+      <div class="card__title">Par fournisseur</div>
+      @foreach (var g in _rows.GroupBy(r => r.Supplier).OrderBy(g => g.Key))
+      {
+        var email = BuildEmail(g.ToList());
+        <div class="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+          <div>
+            <div class="font-semibold text-black">@g.Key</div>
+            <div class="text-black/60 text-sm">@g.Count() ligne(s)</div>
+            @if (email.to.Count > 0)
+            {
+              <div class="text-black/60 text-xs mt-1">@string.Join("; ", email.to)</div>
+            }
+            else
+            {
+              <div class="text-black/60 text-xs mt-1">Email fournisseur manquant</div>
+            }
+          </div>
+          <div class="flex items-center gap-2">
+            @if (email.to.Count > 0)
+            {
+              <a class="btn-primary" href="@email.mailto">Ouvrir le mail</a>
+            }
+            <button class="btn-secondary" @onclick="() => DownloadOneSupplier(g.Key)">Telecharger Excel</button>
+          </div>
         </div>
-        <div>
-          <button class="btn" @onclick="() => DownloadOneSupplier(g.Key)">Télécharger Excel</button>
-        </div>
-      </div>
-    }
+      }
+    </div>
   </div>
 }
 
 @code {
   private List<OrderService.ShortageLine>? _rows;
+  private int TotalSuppliers;
+  private int TotalLines;
 
   protected override void OnInitialized()
   {
     _rows = OrderSvc.GetShortages();
+    TotalLines = _rows?.Count ?? 0;
+    TotalSuppliers = _rows?
+      .Select(r => r.Supplier)
+      .Where(s => !string.IsNullOrWhiteSpace(s))
+      .Distinct(StringComparer.OrdinalIgnoreCase)
+      .Count() ?? 0;
   }
 
-  // <-- Méthode async AVEC await => plus de CS1998
   private async Task DownloadAllZip()
   {
     var bytes = OrderSvc.BuildAllSuppliersZip();
     var b64 = Convert.ToBase64String(bytes);
-    var file = $"Commandes_Groupées_{DateTime.Now:yyyyMMdd_HHmm}.zip";
+    var file = $"Commandes_Groupees_{DateTime.Now:yyyyMMdd_HHmm}.zip";
     await JS.InvokeVoidAsync("saveFile", file, "application/zip", b64);
   }
 
-  // <-- Méthode async AVEC await
   private async Task DownloadOneSupplier(string supplier)
   {
     var bytes = OrderSvc.BuildSupplierWorkbook(supplier);
     var b64 = Convert.ToBase64String(bytes);
     var file = $"Commande_{Sanitize(supplier)}_{DateTime.Now:yyyyMMdd_HHmm}.xlsx";
     await JS.InvokeVoidAsync("saveFile", file, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", b64);
+  }
+
+  private (string mailto, List<string> to) BuildEmail(List<OrderService.ShortageLine> lines)
+  {
+    if (lines.Count == 0) return ("", new List<string>());
+    var order = OrderSvc.BuildOrderFromShortages(lines);
+    var email = OrderSvc.PrepareEmail(order);
+    if (email.to.Count == 0) return ("", email.to);
+    var to = string.Join(";", email.to);
+    var subject = Uri.EscapeDataString(email.subject ?? string.Empty);
+    var body = Uri.EscapeDataString(email.body ?? string.Empty);
+    return ($"mailto:{to}?subject={subject}&body={body}", email.to);
   }
 
   private static string Sanitize(string v) =>

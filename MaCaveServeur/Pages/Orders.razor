@@ -2,64 +2,136 @@
 @using MaCaveServeur.Services
 @inject OrderService OrderSvc
 
-<h1>🧾 Commandes — Pénuries détectées</h1>
+<div class="page-header">
+  <div class="page-eyebrow">Gestion</div>
+  <div class="page-title">Commandes</div>
+  <div class="page-sub">Penuries detectees</div>
+</div>
 
-<div class="card">
-  <p>Liste des références <b>sous le seuil</b> par établissement et fournisseur.</p>
+<div class="kpi-grid mt-8">
+  <div class="kpi-card">
+    <div class="kpi-label">Lignes</div>
+    <div class="kpi-value">@TotalLines</div>
+    <div class="kpi-meta">sous seuil</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Fournisseurs</div>
+    <div class="kpi-value">@TotalSuppliers</div>
+    <div class="kpi-meta">actifs</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Etablissements</div>
+    <div class="kpi-value">@TotalSites</div>
+    <div class="kpi-meta">concernes</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">A commander</div>
+    <div class="kpi-value">@TotalToOrder</div>
+    <div class="kpi-meta">bouteilles</div>
+  </div>
+</div>
+
+<div class="panel mt-6">
+  <div class="toolbar">
+    <div>Liste des references <b>sous le seuil</b> par etablissement et fournisseur.</div>
+    <div class="toolbar-actions">
+      <input class="input max-w-xs" placeholder="Rechercher un fournisseur..." @bind="Search" @bind:event="oninput" />
+      <NavLink class="btn-secondary" href="/orders/bulk">Exporter par fournisseur</NavLink>
+    </div>
+  </div>
 </div>
 
 @if (_rows == null)
 {
-  <div class="card">Chargement…</div>
+  <div class="panel mt-6">Chargement...</div>
 }
 else if (_rows.Count == 0)
 {
-  <div class="card">Aucune pénurie pour le moment ✅</div>
+  <div class="panel mt-6">Aucune penurie pour le moment.</div>
 }
 else
 {
-  <div class="card">
-    <table class="pure-table pure-table-striped" style="width:100%;">
-      <thead>
-        <tr>
-          <th>Fournisseur</th>
-          <th>Site</th>
-          <th>Producteur</th>
-          <th>Nom</th>
-          <th>Millésime</th>
-          <th>Qté</th>
-          <th>Seuil</th>
-          <th>Prix achat</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach (var r in _rows.OrderBy(x => x.Supplier).ThenBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
-        {
+  <div class="panel mt-6">
+    <div class="table-wrap">
+      <table class="table">
+        <thead class="thead">
           <tr>
-            <td>@r.Supplier</td>
-            <td>@r.Site</td>
-            <td>@r.Producer</td>
-            <td>@r.Name</td>
-            <td>@(r.Vintage==0?"—":r.Vintage)</td>
-            <td>@r.CurrentQty</td>
-            <td>@r.LowStockThreshold</td>
-            <td>@r.PurchasePrice.ToString("0.00") €</td>
+            <th>Fournisseur</th>
+            <th>Site</th>
+            <th>Producteur</th>
+            <th>Nom</th>
+            <th>Millesime</th>
+            <th>Qte</th>
+            <th>Seuil</th>
+            <th>Prix achat</th>
+            <th class="text-right">Actions</th>
           </tr>
-        }
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          @foreach (var r in FilteredRows.OrderBy(x => x.Supplier).ThenBy(x => x.Site).ThenBy(x => x.Producer).ThenBy(x => x.Name))
+          {
+            <tr class="trow">
+              <td>@r.Supplier</td>
+              <td>@r.Site</td>
+              <td>@r.Producer</td>
+              <td>@r.Name</td>
+              <td>@(r.Vintage==0?"":r.Vintage)</td>
+              <td>@r.CurrentQty</td>
+              <td>@r.LowStockThreshold</td>
+              <td>@r.PurchasePrice.ToString("0.00") EUR</td>
+              <td class="text-right">
+                <NavLink class="btn-secondary" href="@DetailUrl(r.Supplier)">Voir</NavLink>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
   </div>
 
-  <div class="card">
-    <NavLink class="btn primary" href="/orders/bulk">Préparer les bons groupés</NavLink>
+  <div class="panel mt-6">
+    <NavLink class="btn-primary" href="/orders/bulk">Preparer les bons groupes</NavLink>
   </div>
 }
 
 @code {
   private List<OrderService.ShortageLine>? _rows;
+  private string Search = "";
 
   protected override void OnInitialized()
   {
     _rows = OrderSvc.GetShortages();
+  }
+
+  private IEnumerable<OrderService.ShortageLine> FilteredRows
+  {
+    get
+    {
+      if (_rows == null) return Enumerable.Empty<OrderService.ShortageLine>();
+      var q = _rows.AsEnumerable();
+      var s = (Search ?? "").Trim();
+      if (!string.IsNullOrWhiteSpace(s))
+        q = q.Where(r => (r.Supplier ?? "").Contains(s, StringComparison.OrdinalIgnoreCase));
+      return q;
+    }
+  }
+
+  private int TotalLines => _rows?.Count ?? 0;
+
+  private int TotalSuppliers =>
+    _rows?.Select(r => r.Supplier).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+    ?? 0;
+
+  private int TotalSites =>
+    _rows?.Select(r => r.Site).Where(s => !string.IsNullOrWhiteSpace(s)).Distinct(StringComparer.OrdinalIgnoreCase).Count()
+    ?? 0;
+
+  private int TotalToOrder =>
+    _rows?.Sum(r => Math.Max(0, r.LowStockThreshold - r.CurrentQty)) ?? 0;
+
+  private static string DetailUrl(string supplier)
+  {
+    if (string.IsNullOrWhiteSpace(supplier)) return "/orders";
+    return $"/orders/detail/{Uri.EscapeDataString(supplier)}";
   }
 }

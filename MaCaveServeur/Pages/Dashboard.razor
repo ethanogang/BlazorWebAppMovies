@@ -5,136 +5,164 @@
 
 @inject CellarService CellarService
 @inject AppState State
-@inject NavigationManager Nav
 
 <PageTitle>Dashboard</PageTitle>
 
-<style>
-.dashboard-container {
-    max-width: 1200px;
-    margin: 0 auto;
-}
+<div class="page-header">
+    <div class="page-eyebrow">Dashboard</div>
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Vue globale - <strong>@State.CurrentSiteName</strong></div>
+</div>
 
-.panel {
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 18px;
-    padding: 24px;
-    margin-bottom: 24px;
-}
-
-.kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 20px;
-}
-
-.kpi {
-    background: rgba(255,255,255,0.08);
-    border-radius: 16px;
-    padding: 20px;
-}
-
-.kpi-title {
-    color: rgba(255,255,255,0.7);
-    font-size: 14px;
-}
-
-.kpi-value {
-    font-size: 32px;
-    font-weight: bold;
-    margin-top: 6px;
-}
-
-.actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px;
-}
-
-.actions button {
-    padding: 10px 16px;
-    border-radius: 12px;
-    border: none;
-    font-weight: 600;
-    cursor: pointer;
-}
-
-.btn-primary {
-    background: white;
-    color: black;
-}
-
-.btn-secondary {
-    background: rgba(255,255,255,0.15);
-    color: white;
-}
-</style>
-
-<div class="dashboard-container">
-
-    <!-- HEADER -->
-    <div class="panel">
-        <h1 style="font-size:32px;font-weight:bold">🧭 Dashboard</h1>
-        <p style="opacity:0.7">
-            Vue globale — <strong>@State.CurrentSiteName</strong>
-        </p>
+<div class="kpi-grid mt-8">
+    <div class="kpi-card">
+        <div class="kpi-label">References</div>
+        <div class="kpi-value">@TotalReferences</div>
+        <div class="kpi-meta">cave active</div>
     </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Bouteilles</div>
+        <div class="kpi-value">@TotalBottles</div>
+        <div class="kpi-meta">en stock</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Sous seuil</div>
+        <div class="kpi-value">@LowStock</div>
+        <div class="kpi-meta">a surveiller</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Fournisseurs</div>
+        <div class="kpi-value">@Suppliers</div>
+        <div class="kpi-meta">actifs</div>
+    </div>
+</div>
 
-    <!-- KPI -->
-    <div class="kpi-grid">
-        <div class="kpi">
-            <div class="kpi-title">Références</div>
-            <div class="kpi-value">@TotalReferences</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">Bouteilles en stock</div>
-            <div class="kpi-value">@TotalBottles</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">Sous seuil</div>
-            <div class="kpi-value">@LowStock</div>
-        </div>
-
-        <div class="kpi">
-            <div class="kpi-title">Fournisseurs</div>
-            <div class="kpi-value">@Suppliers</div>
+<div class="row mt-8">
+    <div class="col">
+        <div class="panel">
+            <div class="card__head">
+                <div class="card__title">Repartition par couleur</div>
+            </div>
+            <div class="card__body">
+                @if (ByColor.Count == 0)
+                {
+                    <div class="chart-empty">Aucune donnee</div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead class="thead"><tr><th>Couleur</th><th>References</th></tr></thead>
+                            <tbody>
+                            @foreach (var kv in ByColor)
+                            {
+                                <tr class="trow"><td>@kv.Key</td><td>@kv.Value</td></tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
     </div>
-
-    <!-- ACTIONS -->
-    <div class="panel">
-        <h2 style="font-size:20px;font-weight:bold;margin-bottom:16px">⚡ Actions rapides</h2>
-
-        <div class="actions">
-            <button class="btn-primary" @onclick="GoAdd">➕ Ajouter une bouteille</button>
-            <button class="btn-secondary" @onclick="GoCellar">📦 Voir la cave</button>
-            <button class="btn-secondary" @onclick="GoOrders">🧾 Commandes</button>
+    <div class="col">
+        <div class="panel">
+            <div class="card__head">
+                <div class="card__title">Top fournisseurs</div>
+            </div>
+            <div class="card__body">
+                @if (BySupplier.Count == 0)
+                {
+                    <div class="chart-empty">Aucun fournisseur</div>
+                }
+                else
+                {
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead class="thead"><tr><th>Fournisseur</th><th>References</th></tr></thead>
+                            <tbody>
+                            @foreach (var kv in BySupplier)
+                            {
+                                <tr class="trow"><td>@kv.Key</td><td>@kv.Value</td></tr>
+                            }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            </div>
         </div>
     </div>
+</div>
 
+<div class="panel mt-8">
+    <div class="card__head">
+        <div class="card__title">Stock bas</div>
+    </div>
+    <div class="card__body">
+        @if (LowStockItems.Count == 0)
+        {
+            <div class="chart-empty">Aucun stock bas</div>
+        }
+        else
+        {
+            <div class="space-y-2">
+                @foreach (var b in LowStockItems)
+                {
+                    <div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                        <div class="text-white">
+                            <div class="font-semibold">@b.Name</div>
+                            <div class="text-white/60 text-sm">@b.Producer</div>
+                        </div>
+                        <div class="text-white font-semibold">@b.Quantity</div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
 </div>
 
 @code {
     private List<Bottle> _bottles = new();
+    private Dictionary<string, int> ByColor = new();
+    private Dictionary<string, int> BySupplier = new();
+    private List<Bottle> LowStockItems = new();
 
     protected override void OnInitialized()
     {
-        _bottles = CellarService.GetAllWines() ?? new();
+        var all = CellarService.GetAllWines() ?? new();
+        _bottles = State.IsAll
+            ? all
+            : all.Where(b => string.Equals(b.SiteCode, State.CurrentSiteCode, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        ByColor = _bottles
+            .GroupBy(b => (b.Color ?? "INCONNU").ToUpperInvariant())
+            .OrderByDescending(g => g.Count())
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        BySupplier = _bottles
+            .Where(b => !string.IsNullOrWhiteSpace(b.Supplier))
+            .GroupBy(b => b.Supplier!.Trim())
+            .OrderByDescending(g => g.Count())
+            .Take(8)
+            .ToDictionary(g => g.Key, g => g.Count());
+
+        LowStockItems = _bottles
+            .Where(IsLowStock)
+            .OrderBy(b => b.Quantity)
+            .Take(8)
+            .ToList();
     }
 
     private int TotalReferences => _bottles.Count;
     private int TotalBottles => _bottles.Sum(b => b.Quantity);
-    private int LowStock => _bottles.Count(b => b.Quantity <= (b.LowStockThreshold > 0 ? b.LowStockThreshold : 3));
+    private int LowStock => _bottles.Count(IsLowStock);
     private int Suppliers => _bottles
         .Select(b => b.Supplier)
         .Where(s => !string.IsNullOrWhiteSpace(s))
         .Distinct(StringComparer.OrdinalIgnoreCase)
         .Count();
 
-    private void GoAdd() => Nav.NavigateTo("/cellar/new");
-    private void GoCellar() => Nav.NavigateTo("/cellar");
-    private void GoOrders() => Nav.NavigateTo("/orders");
+    private static bool IsLowStock(Bottle b)
+        => b.LowStockThreshold > 0 && b.Quantity <= b.LowStockThreshold;
+
 }

@@ -11,25 +11,49 @@
 
 <div class="max-w-7xl mx-auto">
 
-    <header class="glass-panel mb-6 p-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header class="page-header mb-6">
+        <div class="panel-head">
             <div>
-                <h1 class="text-3xl font-bold text-white">📦 Ma Cave</h1>
+                <h1 class="text-3xl font-bold text-white">Ma Cave</h1>
                 <p class="text-white/70">
                     Site : <span class="font-semibold">@State.CurrentSiteName</span>
                 </p>
             </div>
 
             <div class="flex flex-wrap gap-3">
-                <button class="btn-primary" @onclick="NewBottle">+ Ajouter</button>
+                <button class="btn-primary" @onclick="NewBottle">Ajouter</button>
+                <button class="btn-secondary" @onclick="GoImport">Importer inventaire</button>
                 <button class="btn-secondary" @onclick="GoDashboard">Dashboard</button>
-                <button class="btn-secondary" @onclick="GoTransfer">Transférer</button>
+                <button class="btn-secondary" @onclick="GoTransfer">Transferer</button>
             </div>
         </div>
     </header>
 
-    <div class="glass-panel p-5 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="kpi-grid mb-6">
+        <div class="kpi-card">
+            <div class="kpi-label">References</div>
+            <div class="kpi-value">@Filtered.Count</div>
+            <div class="kpi-meta">liste affichee</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Stock total</div>
+            <div class="kpi-value">@Filtered.Sum(b => b.Quantity)</div>
+            <div class="kpi-meta">bouteilles</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Sous seuil</div>
+            <div class="kpi-value">@LowStockCount</div>
+            <div class="kpi-meta">a surveiller</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Fournisseurs</div>
+            <div class="kpi-value">@AvailableSuppliers.Count</div>
+            <div class="kpi-meta">distincts</div>
+        </div>
+    </div>
+
+    <div class="panel mb-6 space-y-4">
+        <div class="filter-grid">
             <div>
                 <label class="label">Filtrer par site</label>
                 <select class="select" @bind="SelectedSiteCode" @bind:after="OnSiteChanged">
@@ -41,29 +65,60 @@
             </div>
 
             <div class="md:col-span-2">
-                <label class="label">Recherche (producteur / nom / région)</label>
+                <label class="label">Recherche (producteur / nom / region)</label>
                 <input class="input" placeholder="Ex: Bordeaux, Domaine..., etc."
                        @bind="Search" @bind:event="oninput" />
             </div>
         </div>
 
-        <div class="mt-4 flex gap-3">
-            <button class="btn-secondary" @onclick="Reload">Rafraîchir</button>
+        <div class="filter-grid">
+            <div>
+                <label class="label">Couleur</label>
+                <select class="select" @bind="SelectedColor" @bind:after="ApplyFilters">
+                    <option value="ALL">Toutes</option>
+                    @foreach (var c in AvailableColors)
+                    {
+                        <option value="@c">@c</option>
+                    }
+                </select>
+            </div>
+            <div>
+                <label class="label">Fournisseur</label>
+                <select class="select" @bind="SelectedSupplier" @bind:after="ApplyFilters">
+                    <option value="ALL">Tous</option>
+                    @foreach (var s in AvailableSuppliers)
+                    {
+                        <option value="@s">@s</option>
+                    }
+                </select>
+            </div>
+            <div class="flex items-end gap-4">
+                <label class="label flex items-center gap-2">
+                    <input type="checkbox" class="accent-white" @bind="OnlyLowStock" @bind:after="ApplyFilters" />
+                    Stock bas
+                </label>
+                <button class="btn-secondary" @onclick="ClearFilters">Reinitialiser</button>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button class="btn-secondary" @onclick="Reload">Rafraichir</button>
         </div>
     </div>
 
     @if (!string.IsNullOrWhiteSpace(Alert))
     {
-        <div class="glass-panel p-4 mb-6">
+        <div class="panel p-4 mb-6">
             <div class="text-white">@Alert</div>
         </div>
     }
 
-    <div class="glass-panel p-5">
+    <div class="panel">
         <div class="flex items-center justify-between mb-3">
             <div class="text-white/70 text-sm">
                 Lignes : <span class="text-white font-semibold">@Filtered.Count</span>
-                — Stock total : <span class="text-white font-semibold">@Filtered.Sum(b => b.Quantity)</span>
+                - Stock total : <span class="text-white font-semibold">@Filtered.Sum(b => b.Quantity)</span>
+                - Sous seuil : <span class="text-white font-semibold">@LowStockCount</span>
             </div>
         </div>
 
@@ -73,23 +128,23 @@
         }
         else
         {
-            <div class="overflow-auto">
+            <div class="table-wrap">
                 <table class="table">
                     <thead class="thead">
                         <tr>
-                            <th>Site</th>
-                            <th>Producteur</th>
-                            <th>Nom</th>
-                            <th>Région</th>
-                            <th>Millésime</th>
-                            <th class="text-right">Stock</th>
+                            <th><button class="sort-btn" @onclick='() => ToggleSort("site")'>Site @SortIndicator("site")</button></th>
+                            <th><button class="sort-btn" @onclick='() => ToggleSort("producer")'>Producteur @SortIndicator("producer")</button></th>
+                            <th><button class="sort-btn" @onclick='() => ToggleSort("name")'>Nom @SortIndicator("name")</button></th>
+                            <th><button class="sort-btn" @onclick='() => ToggleSort("region")'>Region @SortIndicator("region")</button></th>
+                            <th><button class="sort-btn" @onclick='() => ToggleSort("vintage")'>Millesime @SortIndicator("vintage")</button></th>
+                            <th class="text-right"><button class="sort-btn" @onclick='() => ToggleSort("stock")'>Stock @SortIndicator("stock")</button></th>
                             <th class="text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach (var b in Filtered)
                         {
-                            <tr class="trow">
+                            <tr class="trow @(IsLowStock(b) ? "row-low" : "")">
                                 <td>@(b.SiteCode ?? "-")</td>
                                 <td>@((b.Producer ?? "").Trim())</td>
                                 <td>@((b.Name ?? "").Trim())</td>
@@ -97,9 +152,10 @@
                                 <td>@(b.Vintage > 0 ? b.Vintage : "")</td>
                                 <td class="text-right font-semibold">@b.Quantity</td>
                                 <td class="text-right">
-                                    <div class="flex justify-end gap-2">
-                                        <button class="btn-secondary" @onclick="() => EditBottle(b.Id)">Éditer</button>
-                                        <button class="btn-secondary" @onclick="() => TransferBottle(b.Id)">Transférer</button>
+                                    <div class="table-actions">
+                                        <button class="btn-secondary" @onclick="() => ViewBottle(b.Id)">Details</button>
+                                        <button class="btn-secondary" @onclick="() => EditBottle(b.Id)">Editer</button>
+                                        <button class="btn-secondary" @onclick="() => TransferBottle(b.Id)">Transferer</button>
                                         <button class="btn-danger" @onclick="() => DeleteBottle(b.Id)">Supprimer</button>
                                     </div>
                                 </td>
@@ -116,10 +172,19 @@
 @code {
     private List<Bottle> All = new();
     private List<Bottle> Filtered = new();
+    private List<string> AvailableColors = new();
+    private List<string> AvailableSuppliers = new();
 
     private string SelectedSiteCode = "ALL";
+    private string SelectedColor = "ALL";
+    private string SelectedSupplier = "ALL";
     private string Search = "";
+    private bool OnlyLowStock;
+    private string SortBy = "producer";
+    private bool SortDesc;
     private string? Alert;
+
+    private int LowStockCount => Filtered.Count(IsLowStock);
 
     protected override void OnInitialized()
     {
@@ -140,6 +205,15 @@
         ApplyFilters();
     }
 
+    private void ClearFilters()
+    {
+        Search = "";
+        SelectedColor = "ALL";
+        SelectedSupplier = "ALL";
+        OnlyLowStock = false;
+        ApplyFilters();
+    }
+
     private void ApplyFilters()
     {
         IEnumerable<Bottle> q = All;
@@ -147,6 +221,33 @@
         if (!string.Equals(SelectedSiteCode, "ALL", StringComparison.OrdinalIgnoreCase))
         {
             q = q.Where(b => string.Equals((b.SiteCode ?? "").Trim(), SelectedSiteCode, StringComparison.OrdinalIgnoreCase));
+        }
+
+        AvailableColors = q.Select(b => (b.Color ?? "").Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s)
+            .ToList();
+
+        AvailableSuppliers = q.Select(b => (b.Supplier ?? "").Trim())
+            .Where(s => !string.IsNullOrWhiteSpace(s))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(s => s)
+            .ToList();
+
+        if (!string.Equals(SelectedColor, "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            q = q.Where(b => string.Equals((b.Color ?? "").Trim(), SelectedColor, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (!string.Equals(SelectedSupplier, "ALL", StringComparison.OrdinalIgnoreCase))
+        {
+            q = q.Where(b => string.Equals((b.Supplier ?? "").Trim(), SelectedSupplier, StringComparison.OrdinalIgnoreCase));
+        }
+
+        if (OnlyLowStock)
+        {
+            q = q.Where(IsLowStock);
         }
 
         var s = (Search ?? "").Trim();
@@ -158,16 +259,58 @@
                 ((b.Region ?? "").Contains(s, StringComparison.OrdinalIgnoreCase)));
         }
 
-        Filtered = q
-            .OrderBy(b => b.SiteCode)
-            .ThenBy(b => b.Producer)
-            .ThenBy(b => b.Name)
-            .ToList();
+        Filtered = ApplySorting(q).ToList();
     }
 
+    private IEnumerable<Bottle> ApplySorting(IEnumerable<Bottle> q)
+    {
+        return (SortBy, SortDesc) switch
+        {
+            ("site", false) => q.OrderBy(b => b.SiteCode),
+            ("site", true) => q.OrderByDescending(b => b.SiteCode),
+            ("producer", false) => q.OrderBy(b => b.Producer),
+            ("producer", true) => q.OrderByDescending(b => b.Producer),
+            ("name", false) => q.OrderBy(b => b.Name),
+            ("name", true) => q.OrderByDescending(b => b.Name),
+            ("region", false) => q.OrderBy(b => b.Region),
+            ("region", true) => q.OrderByDescending(b => b.Region),
+            ("vintage", false) => q.OrderBy(b => b.Vintage),
+            ("vintage", true) => q.OrderByDescending(b => b.Vintage),
+            ("stock", false) => q.OrderBy(b => b.Quantity),
+            ("stock", true) => q.OrderByDescending(b => b.Quantity),
+            _ => q.OrderBy(b => b.Producer).ThenBy(b => b.Name)
+        };
+    }
+
+    private void ToggleSort(string column)
+    {
+        if (SortBy.Equals(column, StringComparison.OrdinalIgnoreCase))
+        {
+            SortDesc = !SortDesc;
+        }
+        else
+        {
+            SortBy = column;
+            SortDesc = false;
+        }
+
+        ApplyFilters();
+    }
+
+    private string SortIndicator(string column)
+    {
+        if (!SortBy.Equals(column, StringComparison.OrdinalIgnoreCase)) return "";
+        return SortDesc ? "v" : "^";
+    }
+
+    private static bool IsLowStock(Bottle b)
+        => b.LowStockThreshold > 0 && b.Quantity <= b.LowStockThreshold;
+
     private void NewBottle() => Nav.NavigateTo("/cellar/new");
+    private void ViewBottle(Guid id) => Nav.NavigateTo($"/cellar/detail/{id}");
     private void EditBottle(Guid id) => Nav.NavigateTo($"/cellar/new/{id}");
     private void TransferBottle(Guid id) => Nav.NavigateTo($"/transfer/{id}");
+    private void GoImport() => Nav.NavigateTo("/import");
     private void GoTransfer() => Nav.NavigateTo("/transfer");
     private void GoDashboard() => Nav.NavigateTo("/dashboard");
 
@@ -176,7 +319,7 @@
         try
         {
             CellarSvc.DeleteWine(id);
-            Alert = "Bouteille supprimée.";
+            Alert = "Bouteille supprimee.";
             Reload();
         }
         catch (Exception ex)

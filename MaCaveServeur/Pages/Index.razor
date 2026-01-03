@@ -1,17 +1,21 @@
-﻿@page "/"
+@page "/"
 @inject MaCaveServeur.Services.CellarService CellarSvc
 @inject MaCaveServeur.Services.AppState State
 @inject NavigationManager Nav
 
-<div class="page-title">Accueil — @(State.IsAll ? "Groupe Amour" : State.CurrentSiteName)</div>
-<div class="page-sub">
-    Vue synthétique @(State.IsAll ? "tous établissements confondus" : $"pour {State.CurrentSiteName}").
+<div class="page-header">
+    <div class="page-eyebrow">Dashboard</div>
+    <div class="page-title">Accueil - @State.CurrentSiteName</div>
+    <div class="page-sub">
+        @(State.IsAll ? "Vue groupee Maison Amour" : $"Vue synthese pour {State.CurrentSiteName}.")
+    </div>
 </div>
 
 @code {
     List<MaCaveServeur.Models.Bottle> list = new();
     int totalRefs, totalQty, lowStock, distinctSuppliers;
     Dictionary<string,int> byColor = new();
+    List<SiteStats> statsBySite = new();
 
     protected override void OnInitialized()
     {
@@ -29,54 +33,138 @@
             .GroupBy(b => (b.Color ?? "INCONNU").ToUpperInvariant())
             .OrderByDescending(g => g.Count())
             .ToDictionary(g => g.Key, g => g.Count());
+
+        statsBySite = State.AllSites
+            .Where(s => s.Code != "ALL")
+            .Select(site =>
+            {
+                var siteList = all.Where(b => string.Equals(b.SiteCode, site.Code, StringComparison.OrdinalIgnoreCase)).ToList();
+                return new SiteStats
+                {
+                    Code = site.Code,
+                    Label = site.Label,
+                    TotalRefs = siteList.Count,
+                    TotalQty = siteList.Sum(b => b.Quantity),
+                    LowStock = siteList.Count(b => b.Quantity <= b.LowStockThreshold),
+                    Suppliers = siteList.Select(b => b.Supplier)
+                        .Where(s => !string.IsNullOrWhiteSpace(s))
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .Count()
+                };
+            })
+            .ToList();
+    }
+
+    class SiteStats
+    {
+        public string Code { get; set; } = "";
+        public string Label { get; set; } = "";
+        public int TotalRefs { get; set; }
+        public int TotalQty { get; set; }
+        public int LowStock { get; set; }
+        public int Suppliers { get; set; }
     }
 }
 
-<div class="metrics mt-18">
-    <div class="metric"><div class="k">@totalRefs</div><div class="l">Références</div></div>
-    <div class="metric"><div class="k">@totalQty</div><div class="l">Bouteilles en stock</div></div>
-    <div class="metric"><div class="k">@lowStock</div><div class="l">Sous seuil</div></div>
-    <div class="metric"><div class="k">@distinctSuppliers</div><div class="l">Fournisseurs actifs</div></div>
+<div class="kpi-grid mt-8">
+    <div class="kpi-card">
+        <div class="kpi-label">References</div>
+        <div class="kpi-value">@totalRefs</div>
+        <div class="kpi-meta">cave active</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Bouteilles</div>
+        <div class="kpi-value">@totalQty</div>
+        <div class="kpi-meta">en stock</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Sous seuil</div>
+        <div class="kpi-value">@lowStock</div>
+        <div class="kpi-meta">a surveiller</div>
+    </div>
+    <div class="kpi-card">
+        <div class="kpi-label">Fournisseurs</div>
+        <div class="kpi-value">@distinctSuppliers</div>
+        <div class="kpi-meta">actifs</div>
+    </div>
 </div>
 
-<div class="row mt-18">
+<div class="row mt-8">
     <div class="col">
         <div class="card">
             <div class="card__head">
-                <div class="card__title">Répartition par couleur</div>
+                <div class="card__title">Repartition par couleur</div>
                 <div class="pills">
-                    <span class="pill active">Aujourd’hui</span>
+                    <span class="pill active">Aujourd hui</span>
                     <span class="pill">Global</span>
                 </div>
             </div>
             <div class="card__body">
                 @if (byColor.Count == 0)
                 {
-                    <div class="chart" style="display:flex;align-items:center;justify-content:center;color:var(--muted)">Aucune donnée</div>
+                    <div class="chart-empty">Aucune donnee</div>
                 }
                 else
                 {
-                    <table class="table">
-                        <thead><tr><th>Couleur</th><th>Références</th></tr></thead>
-                        <tbody>
-                        @foreach (var kv in byColor)
-                        { <tr><td>@kv.Key</td><td>@kv.Value</td></tr> }
-                        </tbody>
-                    </table>
+                    <div class="table-wrap">
+                        <table class="table">
+                            <thead class="thead"><tr><th>Couleur</th><th>References</th></tr></thead>
+                            <tbody>
+                            @foreach (var kv in byColor)
+                            { <tr class="trow"><td>@kv.Key</td><td>@kv.Value</td></tr> }
+                            </tbody>
+                        </table>
+                    </div>
                 }
             </div>
         </div>
     </div>
-    <div class="col">
-        <div class="card">
-            <div class="card__head"><div class="card__title">Actions rapides</div></div>
-            <div class="card__body">
-                <div class="row">
-                    <a class="btn btn-primary" @onclick="@(() => Nav.NavigateTo("/cellar/new"))">Ajouter une bouteille</a>
-                    <a class="btn" @onclick="@(() => Nav.NavigateTo("/orders"))">Voir les commandes</a>
-                    <a class="btn" @onclick="@(() => Nav.NavigateTo("/import"))">Import Excel (cave)</a>
-                </div>
-            </div>
+</div>
+
+<div class="card mt-8">
+    <div class="card__head">
+        <div class="card__title">Stats par etablissement</div>
+        <div class="pills">
+            <span class="pill active">Cave</span>
+            <span class="pill">Stock</span>
         </div>
     </div>
+    @if (statsBySite.Count == 0)
+    {
+        <div class="card__body">
+            <div class="chart-empty">Aucune donnee</div>
+        </div>
+    }
+    else
+    {
+        <div class="card__body">
+            <div class="site-grid">
+                @foreach (var s in statsBySite)
+                {
+                    <div class="site-card">
+                        <div class="site-title">@s.Label</div>
+                        <div class="site-sub">@s.Code</div>
+                        <div class="grid grid-cols-2 gap-3 mt-4">
+                            <div>
+                                <div class="site-stat-label">References</div>
+                                <div class="site-stat-value">@s.TotalRefs</div>
+                            </div>
+                            <div>
+                                <div class="site-stat-label">Bouteilles</div>
+                                <div class="site-stat-value">@s.TotalQty</div>
+                            </div>
+                            <div>
+                                <div class="site-stat-label">Sous seuil</div>
+                                <div class="site-stat-value">@s.LowStock</div>
+                            </div>
+                            <div>
+                                <div class="site-stat-label">Fournisseurs</div>
+                                <div class="site-stat-value">@s.Suppliers</div>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
 </div>

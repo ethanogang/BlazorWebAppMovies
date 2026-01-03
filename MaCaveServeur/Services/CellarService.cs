@@ -10,10 +10,12 @@ namespace MaCaveServeur.Services
     public class CellarService
     {
         private readonly AppDbContext _db;
+        private readonly MovementLogService _log;
 
-        public CellarService(AppDbContext db)
+        public CellarService(AppDbContext db, MovementLogService log)
         {
             _db = db;
+            _log = log;
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
         }
 
@@ -36,11 +38,13 @@ namespace MaCaveServeur.Services
             {
                 MergeInto(existing, b, addQuantity: true);
                 _db.SaveChanges();
+                Log(existing, "merge", b.Quantity, "add quantity");
                 return;
             }
 
             _db.Bottles.Add(b);
             _db.SaveChanges();
+            Log(b, "add", b.Quantity, "new bottle");
         }
 
         /// <summary>
@@ -61,6 +65,7 @@ namespace MaCaveServeur.Services
 
             MergeInto(existing, b, addQuantity: false);
             _db.SaveChanges();
+            Log(existing, "edit", b.Quantity, "update");
         }
 
         public void Delete(Guid id)
@@ -70,6 +75,7 @@ namespace MaCaveServeur.Services
 
             _db.Bottles.Remove(b);
             _db.SaveChanges();
+            Log(b, "delete", b.Quantity, "remove bottle");
         }
 
         // ------------------ API "ancienne" (wrappers Wine) ------------------
@@ -134,6 +140,8 @@ namespace MaCaveServeur.Services
             dst.Quantity += quantity;
 
             _db.SaveChanges();
+            Log(src, "transfer-out", quantity, $"to {dst.SiteCode}");
+            Log(dst, "transfer-in", quantity, $"from {src.SiteCode}");
             return true;
         }
 
@@ -157,6 +165,16 @@ namespace MaCaveServeur.Services
             }
 
             int GetCol(string header) => headers.TryGetValue(header, out var c) ? c : -1;
+
+            var isInventoryFormat = headers.ContainsKey("ProductTypeCode")
+                || headers.ContainsKey("ProductReferenceCode");
+            var hasCaveColumn = headers.Keys.Any(h =>
+                h.StartsWith("CAVE", StringComparison.OrdinalIgnoreCase));
+
+            if (isInventoryFormat && hasCaveColumn)
+            {
+                return ImportInventoryWorksheet(ws, headers, normalizedSite);
+            }
 
             var cColor = GetCol("COULEUR");
             var cName = GetCol("NOM");
@@ -204,11 +222,13 @@ namespace MaCaveServeur.Services
                 {
                     // Merge : on additionne quantité, et on met à jour ce qui manque
                     MergeInto(existing, incoming, addQuantity: true);
+                    Log(existing, "import-merge", incoming.Quantity, "import standard");
                     merged++;
                 }
                 else
                 {
                     _db.Bottles.Add(incoming);
+                    Log(incoming, "import-add", incoming.Quantity, "import standard");
                     created++;
                 }
 
@@ -217,6 +237,123 @@ namespace MaCaveServeur.Services
 
             _db.SaveChanges();
             return created + merged;
+        }
+
+        private int ImportInventoryWorksheet(ExcelWorksheet ws, Dictionary<string, int> headers, string normalizedSite)
+        {
+            int GetCol(string header) => headers.TryGetValue(header, out var c) ? c : -1;
+
+            var cRef = GetCol("ProductReferenceCode");
+            var cType = GetCol("ProductTypeCode");
+            var cName = GetCol("Name");
+            var cDesignation = GetCol("Designation");
+            var cWinery = GetCol("Winery");
+            var cCountry = GetCol("CountryCode");
+            var cRegion = GetCol("Region");
+            var cSupplier = GetCol("PurchaseSupplierName");
+            var cVintage = GetCol("Vintage");
+            var cGrapes = GetCol("Grapes");
+            var cCapacity = GetCol("Capacity");
+            var cBuy = GetCol("UnitPurchasePrice");
+            var cSell = GetCol("UnitSellPrice");
+            var cGlassSell = GetCol("GlassSellPrice");
+            var cLow = GetCol("LowStockThreshold");
+            var cExternalId = GetCol("ExternalId");
+            var cGlassExternalId = GetCol("GlassExternalId");
+            var cComment = GetCol("Comment");
+            var cQty = FindInventoryQuantityColumn(headers, normalizedSite);
+
+            int created = 0;
+            int merged = 0;
+
+            int row = 2;
+            while (true)
+            {
+                var name = cName > 0 ? ws.Cells[row, cName].Text : null;
+                var designation = cDesignation > 0 ? ws.Cells[row, cDesignation].Text : null;
+                var qtyText = cQty > 0 ? ws.Cells[row, cQty].Text : null;
+
+                if (string.IsNullOrWhiteSpace(name)
+                    && string.IsNullOrWhiteSpace(designation)
+                    && string.IsNullOrWhiteSpace(qtyText))
+                {
+                    break;
+                }
+
+                var resolvedName = !string.IsNullOrWhiteSpace(name) ? name : designation;
+                var resolvedAppellation = !string.IsNullOrWhiteSpace(designation) && designation != resolvedName
+                    ? designation
+                    : null;
+
+                var incoming = new Bottle
+                {
+                    Id = Guid.NewGuid(),
+                    SiteCode = normalizedSite,
+                    ProductReferenceCode = cRef > 0 ? ws.Cells[row, cRef].Text : null,
+                    Color = cType > 0 ? ws.Cells[row, cType].Text : null,
+                    Name = resolvedName,
+                    Designation = designation,
+                    Appellation = resolvedAppellation,
+                    Producer = cWinery > 0 ? ws.Cells[row, cWinery].Text : null,
+                    Country = cCountry > 0 ? ws.Cells[row, cCountry].Text : null,
+                    Region = cRegion > 0 ? ws.Cells[row, cRegion].Text : null,
+                    Supplier = cSupplier > 0 ? ws.Cells[row, cSupplier].Text : null,
+                    Vintage = cVintage > 0 ? ParseIntSafe(ws.Cells[row, cVintage].Text) : 0,
+                    Grapes = cGrapes > 0 ? ws.Cells[row, cGrapes].Text : null,
+                    Capacity = cCapacity > 0 ? ParseIntSafe(ws.Cells[row, cCapacity].Text) : 0,
+                    PurchasePrice = cBuy > 0 ? ParseMoney(ws.Cells[row, cBuy].Text) : 0m,
+                    SalePrice = cSell > 0 ? ParseMoney(ws.Cells[row, cSell].Text) : 0m,
+                    GlassSellPrice = cGlassSell > 0 ? ParseMoney(ws.Cells[row, cGlassSell].Text) : 0m,
+                    LowStockThreshold = cLow > 0 ? ParseIntSafe(ws.Cells[row, cLow].Text) : 0,
+                    ExternalId = cExternalId > 0 ? ws.Cells[row, cExternalId].Text : null,
+                    GlassExternalId = cGlassExternalId > 0 ? ws.Cells[row, cGlassExternalId].Text : null,
+                    Quantity = cQty > 0 ? ParseIntSafe(ws.Cells[row, cQty].Text) : 0,
+                    Notes = cComment > 0 ? ws.Cells[row, cComment].Text : null
+                };
+
+                BottleNormalization.NormalizeInPlace(incoming);
+
+                var existing = FindByBusinessKey(incoming);
+                if (existing != null)
+                {
+                    MergeInto(existing, incoming, addQuantity: true);
+                    Log(existing, "import-merge", incoming.Quantity, "import inventory");
+                    merged++;
+                }
+                else
+                {
+                    _db.Bottles.Add(incoming);
+                    Log(incoming, "import-add", incoming.Quantity, "import inventory");
+                    created++;
+                }
+
+                row++;
+            }
+
+            _db.SaveChanges();
+            return created + merged;
+        }
+
+        private static int FindInventoryQuantityColumn(Dictionary<string, int> headers, string normalizedSite)
+        {
+            foreach (var kvp in headers)
+            {
+                if (kvp.Key.StartsWith("CAVE", StringComparison.OrdinalIgnoreCase)
+                    && kvp.Key.Contains(normalizedSite, StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+
+            foreach (var kvp in headers)
+            {
+                if (kvp.Key.StartsWith("CAVE", StringComparison.OrdinalIgnoreCase))
+                {
+                    return kvp.Value;
+                }
+            }
+
+            return -1;
         }
 
         public byte[] ExportExcel(string? siteCode = null)
@@ -305,13 +442,19 @@ namespace MaCaveServeur.Services
             target.Country = incoming.Country ?? target.Country;
             target.Region = incoming.Region ?? target.Region;
             target.Grapes = incoming.Grapes ?? target.Grapes;
+            target.Designation = incoming.Designation ?? target.Designation;
+            target.ProductReferenceCode = incoming.ProductReferenceCode ?? target.ProductReferenceCode;
+            target.ExternalId = incoming.ExternalId ?? target.ExternalId;
+            target.GlassExternalId = incoming.GlassExternalId ?? target.GlassExternalId;
 
             // Prix : si incoming non nul (et >0) alors on garde
             if (incoming.PurchasePrice > 0) target.PurchasePrice = incoming.PurchasePrice;
             if (incoming.SalePrice > 0) target.SalePrice = incoming.SalePrice;
+            if (incoming.GlassSellPrice > 0) target.GlassSellPrice = incoming.GlassSellPrice;
 
             // Seuil : si incoming >0, on garde
             if (incoming.LowStockThreshold > 0) target.LowStockThreshold = incoming.LowStockThreshold;
+            if (incoming.Capacity > 0) target.Capacity = incoming.Capacity;
 
             // Notes : si incoming non vide, on remplace
             if (!string.IsNullOrWhiteSpace(incoming.Notes)) target.Notes = incoming.Notes;
@@ -321,8 +464,36 @@ namespace MaCaveServeur.Services
             target.LastSeenUtc = incoming.LastSeenUtc ?? target.LastSeenUtc;
         }
 
-        private static int ParseIntSafe(string? s, int def = 0)
-            => int.TryParse((s ?? "").Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var v) ? v : def;
+        
+        private void Log(Bottle b, string action, int quantity, string? note = null)
+        {
+            _log.Add(new MovementLogService.MovementEntry
+            {
+                BottleId = b.Id,
+                SiteCode = b.SiteCode ?? "",
+                Action = action,
+                Quantity = quantity,
+                Note = note,
+                TimestampUtc = DateTime.UtcNow
+            });
+        }
+
+private static int ParseIntSafe(string? s, int def = 0)
+        {
+            var txt = (s ?? "").Trim();
+            if (int.TryParse(txt, NumberStyles.Integer, CultureInfo.InvariantCulture, out var v))
+            {
+                return v;
+            }
+
+            if (decimal.TryParse(txt, NumberStyles.AllowDecimalPoint | NumberStyles.AllowLeadingSign,
+                CultureInfo.InvariantCulture, out var d))
+            {
+                return (int)Math.Round(d, MidpointRounding.AwayFromZero);
+            }
+
+            return def;
+        }
 
         private static decimal ParseMoney(string? s, decimal def = 0m)
         {

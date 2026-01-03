@@ -13,14 +13,18 @@ public static class BottleNormalization
         b.SiteCode = Sites.NormalizeOrNull(b.SiteCode);
 
         // Textes : trim + espaces multiples + null si vide
+        b.ProductReferenceCode = CleanText(b.ProductReferenceCode);
         b.Producer = CleanText(b.Producer);
         b.Name = CleanText(b.Name);
+        b.Designation = CleanText(b.Designation);
         b.Region = CleanText(b.Region);
         b.Appellation = CleanText(b.Appellation);
         b.Supplier = CleanText(b.Supplier);
         b.Country = CleanText(b.Country);
         b.Grapes = CleanText(b.Grapes);
         b.Color = CleanText(b.Color);
+        b.ExternalId = CleanText(b.ExternalId);
+        b.GlassExternalId = CleanText(b.GlassExternalId);
 
         if (b.Vintage < 0) b.Vintage = 0;
 

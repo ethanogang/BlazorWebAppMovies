@@ -36,6 +36,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/CellarDetail.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyRGV0YWlsLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/BlazorWebAppMovies/MaCaveServeur/Pages/CellarEdit.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcQ2VsbGFyRWRpdC5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 

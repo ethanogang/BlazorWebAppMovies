@@ -1,22 +1,25 @@
 @page "/tools/clear"
 @inject NavigationManager Nav
 
-<h1>🧨 Purge complète de la cave</h1>
-<p style="color:#b00">Action destructive : supprime toutes les bouteilles (tous établissements).</p>
+<div class="page-header">
+  <div class="page-eyebrow">Outils</div>
+  <div class="page-title">Purge complete de la cave</div>
+  <div class="page-sub text-red-300">Action destructive : supprime toutes les bouteilles (tous etablissements).</div>
+</div>
 
-<div class="card" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-  <button class="btn danger" @onclick="Confirm">Supprimer TOUTES les bouteilles</button>
+<div class="panel mt-6 flex flex-wrap items-center gap-3">
+  <button class="btn-danger" @onclick="Confirm">Supprimer TOUTES les bouteilles</button>
   @if (confirming)
   {
-    <span>Confirmer ?</span>
-    <button class="btn" @onclick="DoClear">Oui, supprimer</button>
-    <button class="btn ghost" @onclick="()=>confirming=false">Annuler</button>
+    <span class="text-white/70">Confirmer ?</span>
+    <button class="btn-secondary" @onclick="DoClear">Oui, supprimer</button>
+    <button class="btn-secondary" @onclick="()=>confirming=false">Annuler</button>
   }
 </div>
 
 @if (!string.IsNullOrEmpty(msg))
 {
-  <p>@msg</p>
+  <div class="panel mt-6">@msg</div>
 }
 
 @code {
@@ -33,16 +36,16 @@
       var resp = await http.GetAsync("/api/cellar/clear?confirm=YES");
       if (resp.IsSuccessStatusCode)
       {
-        msg = "✅ Cave vidée.";
+        msg = "Cave videe.";
       }
       else
       {
-        msg = "❌ " + await resp.Content.ReadAsStringAsync();
+        msg = "Erreur: " + await resp.Content.ReadAsStringAsync();
       }
     }
     catch (Exception ex)
     {
-      msg = "❌ Erreur : " + ex.Message;
+      msg = "Erreur : " + ex.Message;
     }
     finally
     {

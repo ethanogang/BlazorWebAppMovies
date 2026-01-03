@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression; // pour ZipArchive + System.IO.Compression.CompressionLevel
 using System.Linq;
@@ -18,11 +19,15 @@ namespace MaCaveServeur.Services
     {
         private readonly AppDbContext _db;
         private readonly SupplierService _suppliers;
+        private readonly AppState _state;
+        private readonly HashSet<string> _blockedSuppliers;
 
-        public OrderService(AppDbContext db, SupplierService suppliers)
+        public OrderService(AppDbContext db, SupplierService suppliers, AppState state)
         {
             _db = db;
             _suppliers = suppliers;
+            _state = state;
+            _blockedSuppliers = BuildBlockedSuppliers(state);
             ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
         }
 
@@ -109,6 +114,11 @@ namespace MaCaveServeur.Services
                 })
                 .ToList();
 
+            foreach (var line in result)
+            {
+                line.Supplier = NormalizeSupplier(line.Supplier);
+            }
+
             return result;
         }
 
@@ -167,47 +177,24 @@ namespace MaCaveServeur.Services
         /// </summary>
         public (string subject, string body, List<string> to) PrepareEmail(Order order)
         {
-            // Affectations "safe" (supprime CS8601)
             var s = _suppliers.GetByName(order.SupplierName);
             order.SupplierName = (s?.Name ?? order.SupplierName ?? string.Empty).Trim();
             order.ContactName = (s?.ContactName ?? order.ContactName ?? string.Empty).Trim();
             order.OrderEmail = (s?.OrderEmail ?? order.OrderEmail ?? string.Empty).Trim();
             order.Phone = (s?.Phone ?? order.Phone ?? string.Empty).Trim();
-
-            var subject = $"Commande {order.SupplierName} – {DateTime.Now:yyyy-MM-dd}";
-
-            var sb = new StringBuilder();
-            if (!string.IsNullOrWhiteSpace(order.ContactName))
-                sb.AppendLine($"Bonjour {order.ContactName},");
-            else
-                sb.AppendLine("Bonjour,");
-
-            sb.AppendLine();
-            sb.AppendLine("Veuillez trouver ci-dessous notre commande :");
-            sb.AppendLine();
-
-            foreach (var it in order.Lines.OrderBy(l => l.Site).ThenBy(l => l.Producer).ThenBy(l => l.Name))
-            {
-                sb.AppendLine($"- [{it.Site}] {it.Producer} – {it.Name} {(it.Vintage > 0 ? $"({it.Vintage})" : "")} x {it.Quantity}");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("Merci d’en accuser réception.");
-            sb.AppendLine("Cordialement,");
-
-            var body = sb.ToString();
-
-            // Destinataires (filtre + dé-nullification)
+            var deliveryDate = GetNextDeliveryDate();
+            var fr = new CultureInfo("fr-FR");
+            var dateLabel = deliveryDate.ToString("dd MMMM", fr);
+            var subject = $"Commande - {order.SupplierName} - Livraison MERCREDI {dateLabel}";
+            var body = BuildEmailBody(order, deliveryDate);
             var emails = new List<string?>();
             if (!string.IsNullOrWhiteSpace(order.OrderEmail)) emails.Add(order.OrderEmail);
             if (!string.IsNullOrWhiteSpace(s?.OrderEmail)) emails.Add(s!.OrderEmail);
-
             var to = (emails ?? new List<string?>())
                 .Where(e => !string.IsNullOrWhiteSpace(e))
-                .Select(e => e!) // sûr après Where
+                .Select(e => e!)
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
-
             return (subject, body, to);
         }
 
@@ -299,5 +286,155 @@ namespace MaCaveServeur.Services
             var safe = new string(name.Select(ch => invalid.Contains(ch) ? '_' : ch).ToArray());
             return safe.Trim();
         }
+
+        private static DateTime GetNextDeliveryDate()
+        {
+            var today = DateTime.Today;
+            var daysUntil = ((int)DayOfWeek.Wednesday - (int)today.DayOfWeek + 7) % 7;
+            if (daysUntil == 0) daysUntil = 7;
+            return today.AddDays(daysUntil);
+        }
+
+        private static string BuildEmailBody(Order order, DateTime deliveryDate)
+        {
+            var fr = new CultureInfo("fr-FR");
+            var dateLabel = deliveryDate.ToString("dd MMMM", fr);
+            var sb = new StringBuilder();
+            sb.AppendLine("Bonjour, pour les Lions de Suduiraut ont peut ajuster les stocks si tu proposes un tarif a 8,50HT pour etre au meme prix d'achat que ma demoiselle de sigalas au verre");
+            sb.AppendLine();
+            var linesBySite = order.Lines
+                .OrderBy(l => l.Site)
+                .ThenBy(l => l.Producer)
+                .ThenBy(l => l.Name)
+                .GroupBy(l => l.Site);
+            foreach (var siteGroup in linesBySite)
+            {
+                if (string.IsNullOrWhiteSpace(siteGroup.Key)) continue;
+                sb.AppendLine($"POUR {siteGroup.Key} :");
+                sb.AppendLine();
+                foreach (var it in siteGroup)
+                {
+                    var parts = new List<string>();
+                    if (!string.IsNullOrWhiteSpace(it.Appellation)) parts.Add(it.Appellation);
+                    if (!string.IsNullOrWhiteSpace(it.Producer)) parts.Add(it.Producer);
+                    if (!string.IsNullOrWhiteSpace(it.Name)) parts.Add(it.Name);
+                    var line = string.Join(", ", parts);
+                    if (it.Vintage > 0) line += $", {it.Vintage}";
+                    line += $" X {it.Quantity}";
+                    sb.AppendLine(line);
+                }
+                sb.AppendLine();
+            }
+            sb.AppendLine("Merci de bien facturer les bons etablissements");
+            sb.AppendLine();
+            sb.AppendLine($"Livraison MERCREDI {dateLabel} a Brasserie Maillard, 17 rue Saint Remy, 33000 Bordeaux");
+            sb.AppendLine();
+            sb.AppendLine("Bonne journee");
+            sb.AppendLine();
+            sb.AppendLine("ETHAN FONTAINE");
+            sb.AppendLine("SOMMELIER // www.maison-amour.fr");
+            sb.AppendLine("Brutus, Brasserie Maillard, Gramma, Bacchus, Merlot, Banquet");
+            return sb.ToString();
+        }
+
+        private string NormalizeSupplier(string? supplier)
+        {
+            var clean = NormalizeDisplay(supplier);
+            if (string.IsNullOrWhiteSpace(clean)) return "Sans fournisseur";
+
+            var key = NormalizeKey(clean);
+            if (_blockedSuppliers.Contains(key)) return "Sans fournisseur";
+
+            var known = _suppliers.GetByName(clean);
+            if (known != null && !string.IsNullOrWhiteSpace(known.Name))
+                return known.Name.Trim();
+
+            if (IsAllUpper(clean))
+                return ToTitleCase(clean);
+
+            return clean;
+        }
+
+        private static HashSet<string> BuildBlockedSuppliers(AppState state)
+        {
+            var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var site in state.AllSites)
+            {
+                if (site.Code.Equals("ALL", StringComparison.OrdinalIgnoreCase)) continue;
+                set.Add(NormalizeKey(site.Code));
+                set.Add(NormalizeKey(site.Label));
+            }
+            return set;
+        }
+
+        private static string NormalizeKey(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var s = value.Trim();
+            var sb = new StringBuilder(s.Length);
+            var prevSpace = false;
+            foreach (var ch in s)
+            {
+                if (char.IsWhiteSpace(ch))
+                {
+                    if (!prevSpace)
+                    {
+                        sb.Append(' ');
+                        prevSpace = true;
+                    }
+                }
+                else
+                {
+                    sb.Append(char.ToLowerInvariant(ch));
+                    prevSpace = false;
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static string NormalizeDisplay(string? value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return string.Empty;
+            var s = value.Trim();
+            var sb = new StringBuilder(s.Length);
+            var prevSpace = false;
+            foreach (var ch in s)
+            {
+                if (char.IsWhiteSpace(ch))
+                {
+                    if (!prevSpace)
+                    {
+                        sb.Append(' ');
+                        prevSpace = true;
+                    }
+                }
+                else
+                {
+                    sb.Append(ch);
+                    prevSpace = false;
+                }
+            }
+            return sb.ToString();
+        }
+
+        private static bool IsAllUpper(string value)
+        {
+            var hasLetter = false;
+            foreach (var ch in value)
+            {
+                if (!char.IsLetter(ch)) continue;
+                hasLetter = true;
+                if (!char.IsUpper(ch)) return false;
+            }
+            return hasLetter;
+        }
+
+        private static string ToTitleCase(string value)
+        {
+            var lower = value.ToLowerInvariant();
+            return CultureInfo.InvariantCulture.TextInfo.ToTitleCase(lower);
+        }
     }
 }
+
+

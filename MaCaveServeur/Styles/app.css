@@ -5,8 +5,21 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --cream: #f7efe3;
+    --cream-strong: #f1e3d2;
+    --bordeaux: #6a2a24;
+    --bordeaux-deep: #4c1f1b;
+    --card: #5f2520;
+    --card-border: #8a3f37;
+    --ink: #1b1513;
+    --glow: rgba(106, 42, 36, 0.35);
+  }
+
   body {
-    @apply font-sans text-slate bg-gray-50;
+    background-color: var(--cream);
+    color: var(--ink);
+    @apply font-sans;
   }
   
   h1, h2, h3, h4, h5, h6 {
@@ -16,6 +29,29 @@
 
 @layer components {
   /* === CARTES === */
+  .glass-panel {
+    @apply rounded-2xl backdrop-blur border shadow-lg;
+    background-color: rgba(90, 38, 33, 0.6);
+    border-color: rgba(106, 42, 36, 0.35);
+  }
+
+  .glass-panel,
+  .card,
+  .panel,
+  .kpi-card,
+  .site-card {
+    transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease, background-color 180ms ease;
+  }
+
+  .card:hover,
+  .panel:hover,
+  .kpi-card:hover,
+  .site-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 40px -28px rgba(0, 0, 0, 0.8), 0 0 30px -18px var(--glow);
+    border-color: rgba(242, 231, 216, 0.18);
+  }
+
   .wine-card {
     @apply bg-white rounded-2xl shadow-card hover:shadow-card-hover 
            transition-all duration-300 overflow-hidden border border-gray-100
@@ -27,34 +63,50 @@
   }
   
   /* === BOUTONS === */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 font-semibold
+           transition active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
   .btn-primary {
-    @apply bg-gradient-wine text-white px-6 py-3 rounded-xl
-           font-semibold shadow-lg hover:shadow-glow
-           transition-all duration-300 hover:scale-105;
+    @apply btn;
+    color: var(--ink);
+    background-color: var(--bordeaux);
+  }
+
+  .btn-primary:hover {
+    background-color: var(--bordeaux-deep);
   }
   
   .btn-secondary {
-    @apply bg-white text-accent border-2 border-accent px-6 py-3 rounded-xl
-           font-semibold hover:bg-accent hover:text-white
-           transition-all duration-300;
+    @apply btn border;
+    background-color: rgba(90, 38, 33, 0.65);
+    border-color: rgba(106, 42, 36, 0.35);
+    color: var(--ink);
+  }
+
+  .btn-secondary:hover {
+    background-color: rgba(90, 38, 33, 0.75);
+    border-color: rgba(106, 42, 36, 0.45);
   }
   
   .btn-gold {
-    @apply bg-gradient-gold text-slate-dark px-6 py-3 rounded-xl
-           font-semibold shadow-lg hover:shadow-xl
+    @apply text-white px-6 py-3 rounded-xl font-semibold shadow-lg
            transition-all duration-300 hover:scale-105;
+    background-image: linear-gradient(135deg, #8c3a32, #5a2621);
   }
   
   .btn-danger {
-    @apply bg-red-500 text-white px-6 py-3 rounded-xl
-           font-semibold hover:bg-red-600
-           transition-all duration-300;
+    @apply btn;
+    color: var(--ink);
+    background-color: #9b3a2f;
   }
   
   .btn-outline {
-    @apply bg-transparent text-slate border-2 border-gray-300 px-6 py-3 rounded-xl
-           font-semibold hover:bg-gray-50
-           transition-all duration-300;
+    @apply bg-transparent border-2 px-6 py-3 rounded-xl
+           font-semibold transition-all duration-300;
+    border-color: rgba(106, 42, 36, 0.5);
+    color: var(--ink);
   }
   
   /* === BADGES === */
@@ -63,23 +115,28 @@
   }
   
   .badge-success {
-    @apply bg-green-100 text-green-800;
+    background-color: rgba(90, 38, 33, 0.2);
+    color: var(--ink);
   }
   
   .badge-warning {
-    @apply bg-amber-100 text-amber-800;
+    background-color: rgba(90, 38, 33, 0.2);
+    color: var(--ink);
   }
   
   .badge-danger {
-    @apply bg-red-100 text-red-800;
+    background-color: rgba(155, 58, 47, 0.25);
+    color: var(--ink);
   }
   
   .badge-info {
-    @apply bg-blue-100 text-blue-800;
+    background-color: rgba(90, 38, 33, 0.2);
+    color: var(--ink);
   }
   
   .badge-purple {
-    @apply bg-purple-100 text-purple-800;
+    background-color: rgba(90, 38, 33, 0.2);
+    color: var(--ink);
   }
   
   /* === EN-TÊTES === */
@@ -92,7 +149,8 @@
   }
   
   .page-title {
-    @apply text-4xl md:text-5xl font-bold text-white mb-2 font-serif;
+    @apply text-4xl md:text-5xl font-bold mb-2 font-serif;
+    color: var(--ink);
   }
   
   /* === FORMULAIRES === */
@@ -116,6 +174,37 @@
     @apply w-full px-4 py-3 border-2 border-gray-200 rounded-xl
            focus:border-accent focus:ring-2 focus:ring-accent/20
            transition-all duration-200 outline-none resize-none;
+  }
+
+  .input {
+    @apply w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2;
+    background-color: rgba(244, 234, 219, 0.14);
+    border-color: rgba(122, 58, 51, 0.5);
+    color: var(--ink);
+  }
+
+  .select {
+    @apply w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2;
+    background-color: rgba(244, 234, 219, 0.14);
+    border-color: rgba(122, 58, 51, 0.5);
+    color: var(--ink);
+  }
+
+  .textarea {
+    @apply w-full rounded-xl border px-3 py-2 focus:outline-none focus:ring-2;
+    background-color: rgba(244, 234, 219, 0.14);
+    border-color: rgba(122, 58, 51, 0.5);
+    color: var(--ink);
+  }
+
+  .label {
+    color: rgba(27, 21, 19, 0.7);
+    @apply text-sm;
+  }
+
+  .select option {
+    background-color: var(--bordeaux-deep);
+    color: var(--cream);
   }
   
   /* === TABLEAUX === */
@@ -142,16 +231,55 @@
   .elegant-table tbody tr:last-child td {
     @apply border-b-0;
   }
+
+  .table {
+    @apply min-w-full text-sm;
+    color: var(--ink);
+  }
+
+  .thead th {
+    @apply text-left py-2 pr-4 font-semibold;
+    color: rgba(27, 21, 19, 0.7);
+  }
+
+  .trow td {
+    @apply py-2 pr-4 border-t;
+    border-color: rgba(106, 42, 36, 0.2);
+  }
+
+  .row-low td {
+    background-color: rgba(155, 58, 47, 0.18);
+  }
+
+  .sort-btn {
+    @apply inline-flex items-center gap-2 text-left;
+    color: rgba(27, 21, 19, 0.8);
+  }
   
   /* === NAVIGATION === */
+  .nav {
+    @apply space-y-2;
+  }
+
+  .nav-section-title {
+    @apply text-xs uppercase tracking-wider px-2 mt-2;
+    color: rgba(106, 42, 36, 0.55);
+  }
+
   .nav-link {
-    @apply px-4 py-2 rounded-lg text-gray-300 hover:text-white hover:bg-white/10
-           transition-all duration-200 font-medium;
+    @apply flex items-center gap-2 rounded-xl px-3 py-2 transition;
+    color: rgba(106, 42, 36, 0.85);
+  }
+  
+  .nav-link:hover {
+    background-color: rgba(106, 42, 36, 0.12);
+    color: rgba(106, 42, 36, 0.95);
   }
   
   .nav-link-active {
-    @apply px-4 py-2 rounded-lg text-white bg-accent/20
-           font-medium;
+    background-color: rgba(106, 42, 36, 0.18);
+    border-color: rgba(106, 42, 36, 0.2);
+    color: rgba(106, 42, 36, 0.95);
   }
   
   /* === CARTES STATISTIQUES === */
@@ -197,35 +325,383 @@
   }
   
   .alert-success {
-    @apply bg-green-50 border-green-500 text-green-800;
+    background-color: rgba(244, 234, 219, 0.18);
+    border-color: rgba(106, 42, 36, 0.5);
+    color: var(--cream);
   }
   
   .alert-warning {
-    @apply bg-amber-50 border-amber-500 text-amber-800;
+    background-color: rgba(244, 234, 219, 0.18);
+    border-color: rgba(106, 42, 36, 0.5);
+    color: var(--cream);
   }
   
   .alert-danger {
-    @apply bg-red-50 border-red-500 text-red-800;
+    background-color: rgba(155, 58, 47, 0.25);
+    border-color: rgba(155, 58, 47, 0.7);
+    color: var(--cream);
   }
   
   .alert-info {
-    @apply bg-blue-50 border-blue-500 text-blue-800;
+    background-color: rgba(244, 234, 219, 0.18);
+    border-color: rgba(106, 42, 36, 0.5);
+    color: var(--cream);
+  }
+
+  /* === LAYOUT === */
+  .app-shell {
+    @apply min-h-screen;
+    color: var(--ink);
+    background: radial-gradient(900px 500px at 15% -10%, rgba(247, 239, 227, 0.75), transparent 60%),
+                radial-gradient(900px 500px at 85% 0%, rgba(247, 239, 227, 0.45), transparent 60%),
+                linear-gradient(180deg, #f4e7d7 0%, #d9c1b7 55%, #8e4b43 100%);
+  }
+
+  .app-frame {
+    @apply flex;
+  }
+
+  .app-main {
+    @apply flex-1 p-4 md:p-6 lg:p-8;
+  }
+
+  .app-content {
+    @apply max-w-7xl mx-auto;
+  }
+
+  .sidebar {
+    @apply hidden md:block w-72 p-4;
+  }
+
+  .sidebar-links {
+    @apply flex-1;
+  }
+
+  .sidebar-account {
+    @apply mt-0;
+  }
+
+  .sidebar-inner {
+    @apply h-full rounded-3xl border p-5 flex flex-col gap-4;
+    background-color: rgba(247, 239, 227, 0.8);
+    border-color: rgba(106, 42, 36, 0.18);
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(106, 42, 36, 0.3), transparent);
+  }
+
+  .account-card {
+    @apply flex items-center gap-3 rounded-2xl border p-4;
+    background-color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(106, 42, 36, 0.18);
+  }
+
+  .account-avatar {
+    @apply h-10 w-10 rounded-xl font-semibold flex items-center justify-center;
+    background-color: rgba(106, 42, 36, 0.18);
+    color: var(--bordeaux);
+  }
+
+  .account-name {
+    color: var(--bordeaux);
+    @apply font-semibold;
+  }
+
+  .account-role {
+    @apply text-xs uppercase tracking-wider mt-1;
+    color: rgba(106, 42, 36, 0.6);
+  }
+
+  .topbar {
+    @apply rounded-2xl border border-white/10 bg-white/5 px-5 py-4;
+  }
+
+  .topbar {
+    box-shadow: 0 10px 30px -24px var(--glow);
+    background-color: rgba(90, 38, 33, 0.55);
+    border-color: rgba(106, 42, 36, 0.35);
+  }
+
+  .topbar-label {
+    @apply text-xs uppercase tracking-wider;
+    color: rgba(27, 21, 19, 0.7);
+  }
+
+  .topbar-select {
+    @apply mt-2 max-w-xs;
+  }
+
+  .topbar-actions {
+    @apply flex items-center gap-2;
+  }
+
+  .sidebar-shortcuts {
+    @apply mt-4 glass-panel p-4 text-sm;
+    color: rgba(27, 21, 19, 0.7);
+  }
+
+  .brand {
+    @apply text-lg font-semibold tracking-wide;
+    color: var(--bordeaux);
+  }
+
+  .brand-sub {
+    @apply text-sm mt-1;
+    color: rgba(106, 42, 36, 0.6);
+  }
+
+  .app-topbar {
+    @apply sticky top-2;
+  }
+
+  .shortcut-list {
+    @apply mt-2 space-y-2;
+  }
+
+  .shortcut-item {
+    @apply flex items-center gap-2;
+  }
+
+  .dot {
+    @apply inline-block h-1.5 w-1.5 rounded-full bg-white/40;
+  }
+
+  /* === PAGES === */
+  .page-title {
+    @apply text-3xl md:text-4xl font-bold;
+    color: var(--ink);
+  }
+
+  .page-sub {
+    @apply mt-1;
+    color: rgba(27, 21, 19, 0.65);
+  }
+
+  .metrics {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4;
+  }
+
+  .metric {
+    @apply glass-panel p-4;
+  }
+
+  .metric .k {
+    @apply text-2xl font-semibold;
+  }
+
+  .metric .l {
+    @apply text-sm mt-1;
+    color: rgba(27, 21, 19, 0.65);
+  }
+
+  .row {
+    @apply grid grid-cols-1 lg:grid-cols-2 gap-4;
+  }
+
+  .col {
+    @apply min-w-0;
+  }
+
+  .card {
+    @apply rounded-2xl border border-white/10 p-5 shadow-lg;
+    border-color: rgba(106, 42, 36, 0.35);
+    background-color: rgba(90, 38, 33, 0.65);
+    background-image: linear-gradient(140deg, rgba(106, 42, 36, 0.25), rgba(0, 0, 0, 0));
+  }
+
+  .card__head {
+    @apply flex items-center justify-between mb-4;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(247, 239, 227, 0.18);
+  }
+
+  .card__title {
+    @apply text-lg font-semibold;
+    color: var(--ink);
+  }
+
+  .card__body {
+    @apply space-y-3;
+  }
+
+  .pills {
+    @apply flex items-center gap-2;
+  }
+
+  .pill {
+    @apply rounded-full px-3 py-1 text-xs border;
+    color: rgba(27, 21, 19, 0.7);
+    border-color: rgba(106, 42, 36, 0.35);
+  }
+
+  .pill.active {
+    background-color: rgba(106, 42, 36, 0.6);
+    border-color: rgba(106, 42, 36, 0.7);
+    color: var(--ink);
+  }
+
+  .chart-empty {
+    @apply flex items-center justify-center min-h-[120px];
+    color: rgba(27, 21, 19, 0.65);
+  }
+
+  .kpi-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4;
+  }
+
+  .kpi-card {
+    @apply rounded-2xl border border-white/10 p-4 shadow-lg;
+    border-color: rgba(106, 42, 36, 0.35);
+    background-color: rgba(90, 38, 33, 0.65);
+    background-image: linear-gradient(140deg, rgba(106, 42, 36, 0.25), rgba(0, 0, 0, 0));
+  }
+
+  .kpi-label {
+    @apply text-xs uppercase tracking-wider;
+    color: rgba(27, 21, 19, 0.65);
+  }
+
+  .kpi-value {
+    @apply text-2xl md:text-3xl font-semibold mt-2;
+    color: var(--ink);
+  }
+
+  .kpi-meta {
+    @apply text-xs mt-1;
+    color: rgba(27, 21, 19, 0.6);
+  }
+
+  .site-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4;
+  }
+
+  .site-card {
+    @apply rounded-2xl border border-white/10 p-4 shadow-lg;
+    border-color: rgba(106, 42, 36, 0.35);
+    background-color: rgba(90, 38, 33, 0.65);
+  }
+
+  .site-title {
+    @apply font-semibold;
+    color: var(--ink);
+  }
+
+  .site-sub {
+    @apply text-xs mt-1;
+    color: rgba(27, 21, 19, 0.6);
+  }
+
+  .site-stat-label {
+    @apply text-[11px] uppercase tracking-wider;
+    color: rgba(27, 21, 19, 0.6);
+  }
+
+  .site-stat-value {
+    @apply font-semibold mt-1;
+    color: var(--ink);
+  }
+
+  .page-header {
+    @apply rounded-2xl border p-6;
+    border-color: rgba(106, 42, 36, 0.35);
+    background-color: rgba(90, 38, 33, 0.65);
+  }
+
+  .page-eyebrow {
+    @apply text-xs uppercase tracking-wider;
+    color: rgba(27, 21, 19, 0.6);
+  }
+
+  .panel {
+    @apply rounded-2xl border border-white/10 p-5 shadow-lg;
+    border-color: rgba(106, 42, 36, 0.35);
+    background-color: rgba(90, 38, 33, 0.65);
+  }
+
+  .section-divider {
+    @apply my-6 border-t;
+    border-color: rgba(247, 239, 227, 0.2);
+  }
+
+  .panel-head {
+    @apply flex flex-col md:flex-row md:items-center md:justify-between gap-3;
+  }
+
+  .panel-title {
+    @apply text-lg font-semibold;
+    color: var(--ink);
+  }
+
+  .panel-sub {
+    @apply text-sm;
+    color: rgba(27, 21, 19, 0.6);
+  }
+
+  .filter-grid {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4;
+  }
+
+  .table-wrap {
+    @apply overflow-auto rounded-2xl border;
+    border-color: rgba(106, 42, 36, 0.35);
+  }
+
+  .table-actions {
+    @apply flex justify-end gap-2;
+  }
+
+  .toolbar {
+    @apply flex flex-col md:flex-row md:items-center md:justify-between gap-3;
+  }
+
+  .toolbar-actions {
+    @apply flex flex-wrap items-center gap-2;
+  }
+
+  .chip {
+    @apply inline-flex items-center rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs;
+    color: rgba(27, 21, 19, 0.7);
+  }
+
+  .page-header,
+  .kpi-grid,
+  .panel,
+  .card {
+    animation: fadeIn 0.35s ease-out;
+  }
+
+  .kbd {
+    @apply inline-flex items-center rounded-lg border border-white/15 bg-white/10 px-2 py-1 text-xs;
+    color: rgba(27, 21, 19, 0.75);
   }
 }
 
 @layer utilities {
   /* === GRADIENTS === */
   .text-gradient {
-    @apply bg-gradient-wine bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #f2e7d8, #8c2332);
+    @apply bg-clip-text text-transparent;
   }
   
   .text-gradient-gold {
-    @apply bg-gradient-gold bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #f2e7d8, #6a2a24);
+    @apply bg-clip-text text-transparent;
+  }
+
+  .bg-gradient-wine {
+    background-image: linear-gradient(135deg, #6a2a24, #f2e7d8);
+  }
+
+  .bg-gradient-gold {
+    background-image: linear-gradient(135deg, #8c3a32, #f2e7d8);
   }
   
   /* === EFFETS === */
   .glass-effect {
-    @apply bg-white/80 backdrop-blur-lg;
+    background-color: rgba(244, 234, 219, 0.75);
+    @apply backdrop-blur-lg;
   }
   
   .hover-lift {

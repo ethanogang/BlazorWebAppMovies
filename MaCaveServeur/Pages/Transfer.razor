@@ -11,29 +11,51 @@
 <PageTitle>Transfert</PageTitle>
 
 <div class="max-w-4xl mx-auto">
+    <div class="page-header">
+        <div class="page-eyebrow">Gestion</div>
+        <div class="page-title">Transfert</div>
+        <div class="page-sub">Choisis une bouteille source, un site cible et une quantite.</div>
+    </div>
 
-    <header class="glass-panel mb-6 p-6">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-                <h1 class="text-3xl font-bold text-white">🔁 Transfert</h1>
-                <p class="text-white/70">Choisis une bouteille source, un site cible et une quantité.</p>
-            </div>
-            <button class="btn-secondary" @onclick="Back">Retour</button>
+    <div class="kpi-grid mt-8">
+        <div class="kpi-card">
+            <div class="kpi-label">Bouteilles</div>
+            <div class="kpi-value">@SourceList.Count</div>
+            <div class="kpi-meta">disponibles</div>
         </div>
-    </header>
+        <div class="kpi-card">
+            <div class="kpi-label">Sites</div>
+            <div class="kpi-value">@State.AllSites.Count(s => s.Code != "ALL")</div>
+            <div class="kpi-meta">actifs</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Stock</div>
+            <div class="kpi-value">@((SelectedBottle?.Quantity) ?? 0)</div>
+            <div class="kpi-meta">dispo</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Quantite</div>
+            <div class="kpi-value">@Qty</div>
+            <div class="kpi-meta">a transferer</div>
+        </div>
+    </div>
+
+    <div class="flex gap-3 mt-4">
+        <button class="btn-secondary" @onclick="Back">Retour</button>
+    </div>
 
     @if (!string.IsNullOrWhiteSpace(Alert))
     {
-        <div class="glass-panel p-4 mb-6">
+        <div class="panel mt-6">
             <div class="text-white">@Alert</div>
         </div>
     }
 
-    <div class="glass-panel p-6 space-y-5">
+    <div class="panel mt-6 space-y-5">
         <div>
             <label class="label">Bouteille source</label>
             <select class="select" @bind="SelectedId" @bind:after="OnSourceChanged">
-                <option value="">— Choisir —</option>
+                <option value="">- Choisir -</option>
                 @foreach (var b in SourceList)
                 {
                     <option value="@b.Id.ToString()">@FormatBottle(b)</option>
@@ -45,7 +67,7 @@
             <div>
                 <label class="label">Site cible</label>
                 <select class="select" @bind="TargetSiteCode">
-                    <option value="">— Choisir —</option>
+                    <option value="">- Choisir -</option>
                     @foreach (var s in State.AllSites.Where(s => s.Code != "ALL"))
                     {
                         <option value="@s.Code">@s.Label</option>
@@ -54,7 +76,7 @@
             </div>
 
             <div>
-                <label class="label">Quantité</label>
+                <label class="label">Quantite</label>
                 <input class="input" type="number" min="1" @bind="Qty" />
                 <div class="text-white/60 text-sm mt-1">
                     Dispo : <span class="text-white font-semibold">@((SelectedBottle?.Quantity) ?? 0)</span>
@@ -62,8 +84,8 @@
             </div>
         </div>
 
-        <div class="flex gap-3">
-            <button class="btn-primary" @onclick="DoTransfer" disabled="@(!CanTransfer)">Transférer</button>
+        <div class="flex gap-3 pt-2">
+            <button class="btn-primary" @onclick="DoTransfer" disabled="@(!CanTransfer)">Transferer</button>
             <button class="btn-secondary" @onclick="Back">Annuler</button>
         </div>
     </div>
@@ -146,5 +168,5 @@
     private void Back() => Nav.NavigateTo("/cellar");
 
     private static string FormatBottle(Bottle b)
-        => $"{(b.SiteCode ?? "?")} · {(b.Producer ?? "").Trim()} · {(b.Name ?? "").Trim()} {(b.Vintage > 0 ? $"({b.Vintage})" : "")} · Stock {b.Quantity}";
+        => $"{(b.SiteCode ?? "?")} - {(b.Producer ?? "").Trim()} - {(b.Name ?? "").Trim()} {(b.Vintage > 0 ? $"({b.Vintage})" : "")} - Stock {b.Quantity}";
 }

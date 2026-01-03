@@ -1,39 +1,71 @@
-﻿@inherits LayoutComponentBase
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject MaCaveServeur.Services.AppState State
 
-<div class="min-h-screen bg-gradient-dark text-white">
-    <div class="flex">
+<div class="app-shell">
+    <div class="app-frame">
 
         <!-- Sidebar -->
-        <aside class="hidden md:block w-72 p-4">
-            <div class="glass-panel p-4">
-                <div class="text-xl font-bold">🍷 Ma Cave</div>
-                <div class="text-white/60 text-sm mt-1">Gestion multi-sites</div>
-            </div>
+        <aside class="sidebar">
+            <div class="sidebar-inner">
+                <div>
+                    <div class="brand">Ma Cave</div>
+                    <div class="brand-sub">Gestion multi-sites</div>
+                </div>
 
-            <div class="mt-4 glass-panel p-3">
-                <NavMenu />
-            </div>
+                <div class="sidebar-divider"></div>
 
-            <div class="mt-4 glass-panel p-4 text-white/70 text-sm">
-                <div class="font-semibold text-white">Raccourcis</div>
-                <div class="mt-2 space-y-1">
-                    <div>• <span class="kbd">/dashboard</span></div>
-                    <div>• <span class="kbd">/cellar</span></div>
-                    <div>• <span class="kbd">/cellar/new</span></div>
-                    <div>• <span class="kbd">/transfer</span></div>
+                <div class="sidebar-links">
+                    <NavMenu />
+                </div>
+
+                <div class="sidebar-divider"></div>
+
+                <div class="sidebar-account">
+                    <div class="account-card">
+                        <div class="account-avatar">EA</div>
+                        <div>
+                            <div class="account-name">Ethan</div>
+                            <div class="account-role">Admin</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </aside>
 
         <!-- Main -->
-        <main class="flex-1 p-4 md:p-6 lg:p-8">
-            <div class="max-w-7xl mx-auto">
+        <main class="app-main">
+            <div class="app-content">
+
+                <div class="topbar hidden md:flex items-center justify-between mb-6">
+                    <div>
+                        <div class="topbar-label">Etablissement</div>
+                        <select class="select topbar-select" @bind="SelectedSiteCode" @bind:after="OnSiteChanged">
+                            @foreach (var s in State.AllSites)
+                            {
+                                <option value="@s.Code">@s.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="topbar-actions">
+                        <button class="btn-secondary">Profil</button>
+                    </div>
+                </div>
 
                 <!-- Topbar (mobile) -->
-                <div class="md:hidden glass-panel p-3 mb-4">
+                <div class="md:hidden glass-panel p-3 mb-4 app-topbar">
                     <div class="flex items-center justify-between">
-                        <div class="font-bold">🍷 Ma Cave</div>
+                        <div class="font-bold">Ma Cave</div>
                         <a class="btn-secondary" href="/cellar">Cave</a>
+                    </div>
+                    <div class="mt-3">
+                        <label class="label">Restaurant</label>
+                        <select class="select mt-2" @bind="SelectedSiteCode" @bind:after="OnSiteChanged">
+                            @foreach (var s in State.AllSites)
+                            {
+                                <option value="@s.Code">@s.Label</option>
+                            }
+                        </select>
                     </div>
                 </div>
 
@@ -42,3 +74,29 @@
         </main>
     </div>
 </div>
+
+@code {
+    private string SelectedSiteCode = "ALL";
+
+    protected override void OnInitialized()
+    {
+        SelectedSiteCode = State.CurrentSiteCode;
+        State.Changed += OnStateChanged;
+    }
+
+    private void OnSiteChanged()
+    {
+        State.SetSite(SelectedSiteCode);
+    }
+
+    private void OnStateChanged()
+    {
+        SelectedSiteCode = State.CurrentSiteCode;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        State.Changed -= OnStateChanged;
+    }
+}
