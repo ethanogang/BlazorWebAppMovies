@@ -175,18 +175,18 @@ namespace MaCaveServeur.Services
         /// <summary>
         /// Objet, corps et destinataires pour la commande par mail.
         /// </summary>
-        public (string subject, string body, List<string> to) PrepareEmail(Order order)
+        public (string subject, string body, List<string> to) PrepareEmail(Order order, EmailOptions? options = null)
         {
             var s = _suppliers.GetByName(order.SupplierName);
             order.SupplierName = (s?.Name ?? order.SupplierName ?? string.Empty).Trim();
             order.ContactName = (s?.ContactName ?? order.ContactName ?? string.Empty).Trim();
             order.OrderEmail = (s?.OrderEmail ?? order.OrderEmail ?? string.Empty).Trim();
             order.Phone = (s?.Phone ?? order.Phone ?? string.Empty).Trim();
-            var deliveryDate = GetNextDeliveryDate();
+            var deliveryDate = options?.DeliveryDate ?? GetNextDeliveryDate();
             var fr = new CultureInfo("fr-FR");
             var dateLabel = deliveryDate.ToString("dd MMMM", fr);
             var subject = $"Commande - {order.SupplierName} - Livraison MERCREDI {dateLabel}";
-            var body = BuildEmailBody(order, deliveryDate);
+            var body = BuildEmailBody(order, deliveryDate, options);
             var emails = new List<string?>();
             if (!string.IsNullOrWhiteSpace(order.OrderEmail)) emails.Add(order.OrderEmail);
             if (!string.IsNullOrWhiteSpace(s?.OrderEmail)) emails.Add(s!.OrderEmail);
@@ -295,12 +295,35 @@ namespace MaCaveServeur.Services
             return today.AddDays(daysUntil);
         }
 
-        private static string BuildEmailBody(Order order, DateTime deliveryDate)
+        public class EmailOptions
+        {
+            public DateTime? DeliveryDate { get; set; }
+            public string? IntroNote { get; set; }
+            public string? DeliveryAddress { get; set; }
+            public string? FooterNote { get; set; }
+            public string? SignatureName { get; set; }
+            public string? SignatureRole { get; set; }
+            public string? SignatureSites { get; set; }
+        }
+
+        private static string BuildEmailBody(Order order, DateTime deliveryDate, EmailOptions? options)
         {
             var fr = new CultureInfo("fr-FR");
             var dateLabel = deliveryDate.ToString("dd MMMM", fr);
+            var introNote = string.IsNullOrWhiteSpace(options?.IntroNote)
+                ? "Bonjour,"
+                : options!.IntroNote!.Trim();
+            var deliveryAddress = string.IsNullOrWhiteSpace(options?.DeliveryAddress)
+                ? "Brasserie Maillard, 17 rue Saint Rémy, 33000 Bordeaux"
+                : options!.DeliveryAddress!.Trim();
+            var footerNote = string.IsNullOrWhiteSpace(options?.FooterNote)
+                ? "Merci de bien facturer les bons établissements"
+                : options!.FooterNote!.Trim();
+            var signatureName = string.IsNullOrWhiteSpace(options?.SignatureName) ? "ETHAN FONTAINE" : options!.SignatureName!.Trim();
+            var signatureRole = string.IsNullOrWhiteSpace(options?.SignatureRole) ? "SOMMELIER // www.maison-amour.fr" : options!.SignatureRole!.Trim();
+            var signatureSites = string.IsNullOrWhiteSpace(options?.SignatureSites) ? "Brutus, Brasserie Maillard, Gramma, Bacchus, Merlot, Banquet" : options!.SignatureSites!.Trim();
             var sb = new StringBuilder();
-            sb.AppendLine("Bonjour, pour les Lions de Suduiraut ont peut ajuster les stocks si tu proposes un tarif a 8,50HT pour etre au meme prix d'achat que ma demoiselle de sigalas au verre");
+            sb.AppendLine(introNote);
             sb.AppendLine();
             var linesBySite = order.Lines
                 .OrderBy(l => l.Site)
@@ -325,15 +348,15 @@ namespace MaCaveServeur.Services
                 }
                 sb.AppendLine();
             }
-            sb.AppendLine("Merci de bien facturer les bons etablissements");
+            sb.AppendLine(footerNote);
             sb.AppendLine();
-            sb.AppendLine($"Livraison MERCREDI {dateLabel} a Brasserie Maillard, 17 rue Saint Remy, 33000 Bordeaux");
+            sb.AppendLine($"Livraison MERCREDI {dateLabel} a {deliveryAddress}");
             sb.AppendLine();
-            sb.AppendLine("Bonne journee");
+            sb.AppendLine("Bonne journée");
             sb.AppendLine();
-            sb.AppendLine("ETHAN FONTAINE");
-            sb.AppendLine("SOMMELIER // www.maison-amour.fr");
-            sb.AppendLine("Brutus, Brasserie Maillard, Gramma, Bacchus, Merlot, Banquet");
+            sb.AppendLine(signatureName);
+            sb.AppendLine(signatureRole);
+            sb.AppendLine(signatureSites);
             return sb.ToString();
         }
 

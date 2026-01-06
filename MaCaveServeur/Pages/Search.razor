@@ -1,0 +1,239 @@
+@page "/search"
+@using MaCaveServeur.Data
+@using MaCaveServeur.Models
+@using Microsoft.EntityFrameworkCore
+@inject AppDbContext Db
+
+<div class="page-header">
+  <div class="page-eyebrow">Recherche</div>
+  <div class="page-title">Recherche globale</div>
+  <div class="page-sub">Vins, fournisseurs et filtres rapides.</div>
+</div>
+
+<div class="panel mt-6">
+  <div class="toolbar">
+    <div class="toolbar-actions">
+      <input class="input max-w-md" placeholder="Rechercher (nom, producteur, appellation, fournisseur...)" @bind="Query" @bind:event="oninput" @bind:after="OnSearchChanged" />
+      <button class="btn-secondary" @onclick="ClearSearch">Effacer</button>
+    </div>
+    <div class="toolbar-actions">
+      <label class="chip">
+        <input type="checkbox" class="mr-2" @bind="FilterLowStock" @bind:after="OnSearchChanged" />
+        Sous seuil
+      </label>
+      <label class="chip">
+        <input type="checkbox" class="mr-2" @bind="FilterNoSupplier" @bind:after="OnSearchChanged" />
+        Sans fournisseur
+      </label>
+      <label class="chip">
+        <input type="checkbox" class="mr-2" @bind="FilterOverstock" @bind:after="OnSearchChanged" />
+        Surstock
+      </label>
+    </div>
+  </div>
+</div>
+
+@if (!ShouldSearch)
+{
+  <div class="panel mt-6">Saisis au moins 2 caracteres ou active un filtre.</div>
+}
+else
+{
+  <div class="kpi-grid mt-6">
+    <div class="kpi-card">
+      <div class="kpi-label">Vins</div>
+      <div class="kpi-value">@BottleCount</div>
+      <div class="kpi-meta">resultats</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Fournisseurs</div>
+      <div class="kpi-value">@SupplierCount</div>
+      <div class="kpi-meta">resultats</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Surstock</div>
+      <div class="kpi-value">@OverstockCount</div>
+      <div class="kpi-meta">references</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">Sous seuil</div>
+      <div class="kpi-value">@LowStockCount</div>
+      <div class="kpi-meta">references</div>
+    </div>
+  </div>
+
+  <div class="row mt-6">
+    <div class="col">
+      <div class="panel">
+        <div class="card__head">
+          <div class="card__title">Vins</div>
+        </div>
+        @if (BottleResults.Count == 0)
+        {
+          <div class="chart-empty">Aucun resultat</div>
+        }
+        else
+        {
+          <div class="table-wrap">
+            <table class="table">
+              <thead class="thead">
+                <tr>
+                  <th>Nom</th>
+                  <th>Producteur</th>
+                  <th>Appellation</th>
+                  <th>Site</th>
+                  <th>Stock</th>
+                  <th class="text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach (var b in BottleResults)
+                {
+                  <tr class="trow">
+                    <td>@b.Name</td>
+                    <td>@b.Producer</td>
+                    <td>@b.Appellation</td>
+                    <td>@b.SiteCode</td>
+                    <td>@b.Quantity</td>
+                    <td class="text-right">
+                      <a class="btn-secondary" href="@($"/cellar/detail/{b.Id}")">Voir</a>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+    <div class="col">
+      <div class="panel">
+        <div class="card__head">
+          <div class="card__title">Fournisseurs</div>
+        </div>
+        @if (SupplierResults.Count == 0)
+        {
+          <div class="chart-empty">Aucun resultat</div>
+        }
+        else
+        {
+          <div class="table-wrap">
+            <table class="table">
+              <thead class="thead">
+                <tr>
+                  <th>Nom</th>
+                  <th>Email</th>
+                  <th>Telephone</th>
+                </tr>
+              </thead>
+              <tbody>
+                @foreach (var s in SupplierResults)
+                {
+                  <tr class="trow">
+                    <td>@s.Name</td>
+                    <td>@s.OrderEmail</td>
+                    <td>@s.Phone</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}
+
+@code {
+  private string Query = "";
+  private bool FilterLowStock;
+  private bool FilterNoSupplier;
+  private bool FilterOverstock;
+  private List<Bottle> BottleResults = new();
+  private List<Supplier> SupplierResults = new();
+  private int LowStockCount;
+  private int OverstockCount;
+
+  private bool ShouldSearch =>
+    (Query ?? "").Trim().Length >= 2 || FilterLowStock || FilterNoSupplier || FilterOverstock;
+
+  protected override async Task OnInitializedAsync()
+  {
+    await LoadResults();
+  }
+
+  private async Task LoadResults()
+  {
+    if (!ShouldSearch)
+    {
+      BottleResults = new();
+      SupplierResults = new();
+      LowStockCount = 0;
+      OverstockCount = 0;
+      return;
+    }
+
+    var q = (Query ?? "").Trim();
+    var bottles = Db.Bottles.AsNoTracking().AsQueryable();
+    if (FilterLowStock)
+      bottles = bottles.Where(b => b.LowStockThreshold > 0 && b.Quantity < b.LowStockThreshold);
+    if (FilterNoSupplier)
+      bottles = bottles.Where(b => b.Supplier == null || b.Supplier == "");
+    if (FilterOverstock)
+      bottles = bottles.Where(b => b.LowStockThreshold > 0 && b.Quantity >= b.LowStockThreshold * 2);
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+      var pattern = $"%{q}%";
+      bottles = bottles.Where(b =>
+        EF.Functions.Like(b.Name ?? "", pattern)
+        || EF.Functions.Like(b.Producer ?? "", pattern)
+        || EF.Functions.Like(b.Appellation ?? "", pattern)
+        || EF.Functions.Like(b.Region ?? "", pattern)
+        || EF.Functions.Like(b.Country ?? "", pattern)
+        || EF.Functions.Like(b.Supplier ?? "", pattern));
+    }
+
+    BottleResults = await bottles
+      .OrderBy(b => b.Name)
+      .Take(200)
+      .ToListAsync();
+
+    LowStockCount = await Db.Bottles.AsNoTracking()
+      .Where(b => b.LowStockThreshold > 0 && b.Quantity < b.LowStockThreshold)
+      .CountAsync();
+    OverstockCount = await Db.Bottles.AsNoTracking()
+      .Where(b => b.LowStockThreshold > 0 && b.Quantity >= b.LowStockThreshold * 2)
+      .CountAsync();
+
+    var suppliers = Db.Suppliers.AsNoTracking().AsQueryable();
+    if (!string.IsNullOrWhiteSpace(q))
+    {
+      var pattern = $"%{q}%";
+      suppliers = suppliers.Where(s =>
+        EF.Functions.Like(s.Name ?? "", pattern)
+        || EF.Functions.Like(s.OrderEmail ?? "", pattern)
+        || EF.Functions.Like(s.ContactName ?? "", pattern)
+        || EF.Functions.Like(s.Phone ?? "", pattern));
+    }
+
+    SupplierResults = await suppliers
+      .OrderBy(s => s.Name)
+      .Take(100)
+      .ToListAsync();
+  }
+
+  private void ClearSearch()
+  {
+    Query = "";
+    FilterLowStock = false;
+    FilterNoSupplier = false;
+    FilterOverstock = false;
+    _ = LoadResults();
+  }
+
+  private Task OnSearchChanged()
+    => LoadResults();
+
+  private int BottleCount => BottleResults.Count;
+  private int SupplierCount => SupplierResults.Count;
+}

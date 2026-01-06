@@ -72,6 +72,10 @@ build_metadata.AdditionalFiles.CssScope =
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcT3JkZXJzQnVsay5yYXpvcg==
 build_metadata.AdditionalFiles.CssScope = 
 
+[C:/BlazorWebAppMovies/MaCaveServeur/Pages/Search.razor]
+build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU2VhcmNoLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
 [C:/BlazorWebAppMovies/MaCaveServeur/Pages/Suppliers.razor]
 build_metadata.AdditionalFiles.TargetPath = UGFnZXNcU3VwcGxpZXJzLnJhem9y
 build_metadata.AdditionalFiles.CssScope = 

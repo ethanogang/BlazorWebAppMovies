@@ -32,6 +32,40 @@
   </div>
 </div>
 
+<div class="panel mt-6">
+  <div class="card__title">Composer le bon de commande</div>
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+    <div>
+      <label class="label">Date de livraison</label>
+      <input class="input" type="date" @bind="DeliveryDate" />
+    </div>
+    <div>
+      <label class="label">Adresse de livraison</label>
+      <input class="input" @bind="DeliveryAddress" />
+    </div>
+    <div class="md:col-span-2">
+      <label class="label">Note d'introduction</label>
+      <textarea class="textarea" rows="3" @bind="IntroNote"></textarea>
+    </div>
+    <div class="md:col-span-2">
+      <label class="label">Note de fin</label>
+      <input class="input" @bind="FooterNote" />
+    </div>
+    <div>
+      <label class="label">Signature - Nom</label>
+      <input class="input" @bind="SignatureName" />
+    </div>
+    <div>
+      <label class="label">Signature - Fonction</label>
+      <input class="input" @bind="SignatureRole" />
+    </div>
+    <div class="md:col-span-2">
+      <label class="label">Signature - Etablissements</label>
+      <input class="input" @bind="SignatureSites" />
+    </div>
+  </div>
+</div>
+
 @if (_rows == null)
 {
   <div class="panel mt-6">Analyse des penuries...</div>
@@ -83,6 +117,13 @@ else
   private List<OrderService.ShortageLine>? _rows;
   private int TotalSuppliers;
   private int TotalLines;
+  private DateTime DeliveryDate = DateTime.Today;
+  private string IntroNote = "Bonjour,";
+  private string DeliveryAddress = "Brasserie Maillard, 17 rue Saint Rémy, 33000 Bordeaux";
+  private string FooterNote = "Merci de bien facturer les bons établissements";
+  private string SignatureName = "ETHAN FONTAINE";
+  private string SignatureRole = "SOMMELIER // www.maison-amour.fr";
+  private string SignatureSites = "Brutus, Brasserie Maillard, Gramma, Bacchus, Merlot, Banquet";
 
   protected override void OnInitialized()
   {
@@ -93,6 +134,14 @@ else
       .Where(s => !string.IsNullOrWhiteSpace(s))
       .Distinct(StringComparer.OrdinalIgnoreCase)
       .Count() ?? 0;
+    DeliveryDate = NextWednesday(DateTime.Today);
+  }
+
+  private static DateTime NextWednesday(DateTime today)
+  {
+    var daysUntil = ((int)DayOfWeek.Wednesday - (int)today.DayOfWeek + 7) % 7;
+    if (daysUntil == 0) daysUntil = 7;
+    return today.AddDays(daysUntil);
   }
 
   private async Task DownloadAllZip()
@@ -115,7 +164,17 @@ else
   {
     if (lines.Count == 0) return ("", new List<string>());
     var order = OrderSvc.BuildOrderFromShortages(lines);
-    var email = OrderSvc.PrepareEmail(order);
+    var options = new OrderService.EmailOptions
+    {
+      DeliveryDate = DeliveryDate,
+      IntroNote = IntroNote,
+      DeliveryAddress = DeliveryAddress,
+      FooterNote = FooterNote,
+      SignatureName = SignatureName,
+      SignatureRole = SignatureRole,
+      SignatureSites = SignatureSites
+    };
+    var email = OrderSvc.PrepareEmail(order, options);
     if (email.to.Count == 0) return ("", email.to);
     var to = string.Join(";", email.to);
     var subject = Uri.EscapeDataString(email.subject ?? string.Empty);

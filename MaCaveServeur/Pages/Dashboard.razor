@@ -96,6 +96,93 @@
 
 <div class="panel mt-8">
     <div class="card__head">
+        <div class="card__title">Sante cave</div>
+    </div>
+    <div class="kpi-grid">
+        <div class="kpi-card">
+            <div class="kpi-label">Surstock</div>
+            <div class="kpi-value">@OverstockCount</div>
+            <div class="kpi-meta">references</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Rotation lente</div>
+            <div class="kpi-value">@SlowMovingCount</div>
+            <div class="kpi-meta">references</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Immobilise</div>
+            <div class="kpi-value">@ImmobilisedValue.ToString("0.00")</div>
+            <div class="kpi-meta">EUR achat</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-label">Sans fournisseur</div>
+            <div class="kpi-value">@MissingSupplierCount</div>
+            <div class="kpi-meta">references</div>
+        </div>
+    </div>
+
+    <div class="row mt-6">
+        <div class="col">
+            <div class="card">
+                <div class="card__head">
+                    <div class="card__title">Top surstock</div>
+                </div>
+                <div class="card__body">
+                    @if (OverstockItems.Count == 0)
+                    {
+                        <div class="chart-empty">Aucun surstock</div>
+                    }
+                    else
+                    {
+                        <div class="space-y-2">
+                            @foreach (var b in OverstockItems)
+                            {
+                                <div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                                    <div>
+                                        <div class="font-semibold">@b.Name</div>
+                                        <div class="text-sm">@b.Producer</div>
+                                    </div>
+                                    <div class="font-semibold">@b.Quantity</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card">
+                <div class="card__head">
+                    <div class="card__title">Rotation lente (90j)</div>
+                </div>
+                <div class="card__body">
+                    @if (SlowMovingItems.Count == 0)
+                    {
+                        <div class="chart-empty">Aucune reference</div>
+                    }
+                    else
+                    {
+                        <div class="space-y-2">
+                            @foreach (var b in SlowMovingItems)
+                            {
+                                <div class="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+                                    <div>
+                                        <div class="font-semibold">@b.Name</div>
+                                        <div class="text-sm">@b.Producer</div>
+                                    </div>
+                                    <div class="text-sm">@((b.LastSeenUtc.HasValue) ? b.LastSeenUtc.Value.ToString("yyyy-MM-dd") : "Jamais")</div>
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="panel mt-8">
+    <div class="card__head">
         <div class="card__title">Stock bas</div>
     </div>
     <div class="card__body">
@@ -126,6 +213,8 @@
     private Dictionary<string, int> ByColor = new();
     private Dictionary<string, int> BySupplier = new();
     private List<Bottle> LowStockItems = new();
+    private List<Bottle> OverstockItems = new();
+    private List<Bottle> SlowMovingItems = new();
 
     protected override void OnInitialized()
     {
@@ -151,11 +240,28 @@
             .OrderBy(b => b.Quantity)
             .Take(8)
             .ToList();
+
+        OverstockItems = _bottles
+            .Where(IsOverstock)
+            .OrderByDescending(b => b.Quantity)
+            .Take(8)
+            .ToList();
+
+        var now = DateTime.UtcNow;
+        SlowMovingItems = _bottles
+            .Where(b => IsSlowMoving(b, now))
+            .OrderBy(b => b.LastSeenUtc ?? DateTime.MinValue)
+            .Take(8)
+            .ToList();
     }
 
     private int TotalReferences => _bottles.Count;
     private int TotalBottles => _bottles.Sum(b => b.Quantity);
     private int LowStock => _bottles.Count(IsLowStock);
+    private int OverstockCount => _bottles.Count(IsOverstock);
+    private int SlowMovingCount => _bottles.Count(b => IsSlowMoving(b, DateTime.UtcNow));
+    private int MissingSupplierCount => _bottles.Count(b => string.IsNullOrWhiteSpace(b.Supplier));
+    private decimal ImmobilisedValue => _bottles.Sum(b => b.PurchasePrice * b.Quantity);
     private int Suppliers => _bottles
         .Select(b => b.Supplier)
         .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -164,5 +270,11 @@
 
     private static bool IsLowStock(Bottle b)
         => b.LowStockThreshold > 0 && b.Quantity <= b.LowStockThreshold;
+
+    private static bool IsOverstock(Bottle b)
+        => b.LowStockThreshold > 0 && b.Quantity >= b.LowStockThreshold * 2;
+
+    private static bool IsSlowMoving(Bottle b, DateTime now)
+        => b.Quantity > 0 && (!b.LastSeenUtc.HasValue || b.LastSeenUtc.Value < now.AddDays(-90));
 
 }
